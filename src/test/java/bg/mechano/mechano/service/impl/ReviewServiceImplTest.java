@@ -1,0 +1,258 @@
+package bg.mechano.mechano.service.impl;
+
+import bg.mechano.mechano.domain.entity.RepairShop;
+import bg.mechano.mechano.domain.entity.Review;
+import bg.mechano.mechano.domain.entity.User;
+import bg.mechano.mechano.domain.repository.RepairShopRepository;
+import bg.mechano.mechano.domain.repository.ReviewRepository;
+import bg.mechano.mechano.domain.repository.UserRepository;
+import bg.mechano.mechano.web.dto.review.ReviewCreateRequest;
+import bg.mechano.mechano.web.dto.review.ReviewResponse;
+import bg.mechano.mechano.web.exception.NotFoundException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ReviewServiceImplTest {
+
+    @Mock
+    private ReviewRepository reviewRepository;
+
+    @Mock
+    private RepairShopRepository repairShopRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private ReviewServiceImpl service;
+
+    @Test
+    void create_shouldCreateReview_whenValidWithoutParent() {
+        ReviewCreateRequest request =
+                new ReviewCreateRequest(1L, 2L, (short) 5, "  Great service  ", null);
+
+        RepairShop shop = RepairShop.builder().id(1L).build();
+        User user = User.builder().id(2L).build();
+
+        when(repairShopRepository.findById(1L)).thenReturn(Optional.of(shop));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+        when(reviewRepository.save(any())).thenAnswer(inv -> {
+            Review r = inv.getArgument(0);
+            r.setId(10L);
+            return r;
+        });
+
+        ReviewResponse response = service.create(request);
+
+        ArgumentCaptor<Review> captor = ArgumentCaptor.forClass(Review.class);
+        verify(reviewRepository).save(captor.capture());
+
+        Review saved = captor.getValue();
+        assertEquals(1L, saved.getRepairShop().getId());
+        assertEquals(2L, saved.getUser().getId());
+        assertNull(saved.getParentReview());
+        assertEquals(5, saved.getRatingOverall());
+        assertEquals("Great service", saved.getCommentText());
+        assertTrue(saved.isVisible());
+        assertNotNull(saved.getCreatedAt());
+
+        assertEquals(10L, response.id());
+        assertEquals(1L, response.repairShopId());
+        assertEquals(2L, response.userId());
+        assertNull(response.parentReviewId());
+        assertEquals(5, response.ratingOverall());
+    }
+
+    @Test
+    void create_shouldCreateReview_withParent() {
+        ReviewCreateRequest request =
+                new ReviewCreateRequest(1L, 2L, (short) 4, "Reply", 3L);
+
+        RepairShop shop = RepairShop.builder().id(1L).build();
+        User user = User.builder().id(2L).build();
+        Review parent = Review.builder().id(3L).isVisible(true).build();
+
+        when(repairShopRepository.findById(1L)).thenReturn(Optional.of(shop));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+        when(reviewRepository.findById(3L)).thenReturn(Optional.of(parent));
+        when(reviewRepository.save(any())).thenAnswer(inv -> {
+            Review r = inv.getArgument(0);
+            r.setId(11L);
+            return r;
+        });
+
+        ReviewResponse response = service.create(request);
+
+        assertEquals(3L, response.parentReviewId());
+    }
+
+    @Test
+    void create_shouldThrowNotFound_whenRepairShopMissing() {
+        ReviewCreateRequest request =
+                new ReviewCreateRequest(1L, 2L, (short) 5, "x", null);
+
+        when(repairShopRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.create(request));
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void create_shouldThrowNotFound_whenUserMissing() {
+        ReviewCreateRequest request =
+                new ReviewCreateRequest(1L, 2L, (short) 5, "x", null);
+
+        when(repairShopRepository.findById(1L))
+                .thenReturn(Optional.of(RepairShop.builder().id(1L).build()));
+        when(userRepository.findById(2L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.create(request));
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void create_shouldThrowNotFound_whenParentMissing() {
+        ReviewCreateRequest request =
+                new ReviewCreateRequest(1L, 2L, (short) 5, "x", 3L);
+
+        when(repairShopRepository.findById(1L))
+                .thenReturn(Optional.of(RepairShop.builder().id(1L).build()));
+        when(userRepository.findById(2L))
+                .thenReturn(Optional.of(User.builder().id(2L).build()));
+        when(reviewRepository.findById(3L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.create(request));
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void getById_shouldReturnReview_whenVisible() {
+        Review review = Review.builder()
+                .id(5L)
+                .repairShop(RepairShop.builder().id(1L).build())
+                .user(User.builder().id(2L).build())
+                .ratingOverall((short) 4)
+                .commentText("Ok")
+                .createdAt(Instant.now())
+                .isVisible(true)
+                .build();
+
+        when(reviewRepository.findById(5L)).thenReturn(Optional.of(review));
+
+        ReviewResponse response = service.getById(5L);
+
+        assertEquals(5L, response.id());
+        assertEquals(4, response.ratingOverall());
+    }
+
+    @Test
+    void getById_shouldThrowNotFound_whenHidden() {
+        Review review = Review.builder()
+                .id(5L)
+                .isVisible(false)
+                .build();
+
+        when(reviewRepository.findById(5L)).thenReturn(Optional.of(review));
+
+        assertThrows(NotFoundException.class, () -> service.getById(5L));
+    }
+
+    @Test
+    void list_shouldUseFindByRepairShop_whenRepairShopIdProvided() {
+        when(reviewRepository.findByRepairShopIdAndIsVisibleTrue(1L)).thenReturn(List.of(
+                Review.builder()
+                        .id(1L)
+                        .repairShop(RepairShop.builder().id(1L).build())
+                        .user(User.builder().id(2L).build())
+                        .isVisible(true)
+                        .createdAt(Instant.now())
+                        .build()
+        ));
+
+        List<ReviewResponse> result = service.list(1L, null);
+
+        verify(reviewRepository).findByRepairShopIdAndIsVisibleTrue(1L);
+        verify(reviewRepository, never()).findByUserIdAndIsVisibleTrue(any());
+        verify(reviewRepository, never()).findAll();
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void list_shouldUseFindByUser_whenUserIdProvided() {
+        when(reviewRepository.findByUserIdAndIsVisibleTrue(2L)).thenReturn(List.of(
+                Review.builder()
+                        .id(2L)
+                        .repairShop(RepairShop.builder().id(1L).build())
+                        .user(User.builder().id(2L).build())
+                        .isVisible(true)
+                        .createdAt(Instant.now())
+                        .build()
+        ));
+
+        List<ReviewResponse> result = service.list(null, 2L);
+
+        verify(reviewRepository).findByUserIdAndIsVisibleTrue(2L);
+        verify(reviewRepository, never()).findByRepairShopIdAndIsVisibleTrue(any());
+        verify(reviewRepository, never()).findAll();
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void list_shouldReturnAllVisible_whenNoFilters() {
+        Review visible = Review.builder()
+                .id(1L)
+                .repairShop(RepairShop.builder().id(1L).build())
+                .user(User.builder().id(2L).build())
+                .isVisible(true)
+                .createdAt(Instant.now())
+                .build();
+
+        Review hidden = Review.builder()
+                .id(2L)
+                .isVisible(false)
+                .build();
+
+        when(reviewRepository.findAll()).thenReturn(List.of(visible, hidden));
+
+        List<ReviewResponse> result = service.list(null, null);
+
+        assertEquals(1, result.size());
+        assertEquals(1L, result.get(0).id());
+    }
+
+    @Test
+    void hide_shouldSetVisibleFalse_andSave() {
+        Review review = Review.builder()
+                .id(9L)
+                .isVisible(true)
+                .build();
+
+        when(reviewRepository.findById(9L)).thenReturn(Optional.of(review));
+        when(reviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.hide(9L);
+
+        assertFalse(review.isVisible());
+        verify(reviewRepository).save(review);
+    }
+
+    @Test
+    void hide_shouldThrowNotFound_whenMissing() {
+        when(reviewRepository.findById(9L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.hide(9L));
+        verify(reviewRepository, never()).save(any());
+    }
+}
