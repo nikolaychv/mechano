@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -58,7 +59,9 @@ public class GlobalExceptionHandler {
 
     private Map<String, Object> body(HttpStatus status, String message) {
         Map<String, Object> m = new HashMap<>();
-        m.put("timestamp", Instant.now());
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss XXX");
+        String timestamp = ZonedDateTime.now().format(fmt);
+        m.put("timestamp", timestamp);
         m.put("status", status.value());
         m.put("error", status.getReasonPhrase());
         m.put("message", message);
