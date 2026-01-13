@@ -1,5 +1,6 @@
 package bg.mechano.mechano.domain.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.*;
 
@@ -7,7 +8,8 @@ import java.io.Serializable;
 
 /**
  * Represents the composite key for the RepairShopServiceType entity.
- * This class is used to uniquely identify the relationship between a repairShop and a repairShop type.
+ * This class uniquely identifies the relationship between
+ * a RepairShop and a RepairShopType.
  */
 @Getter
 @Setter
@@ -17,7 +19,10 @@ import java.io.Serializable;
 @Embeddable
 @EqualsAndHashCode
 public class RepairShopServiceTypeId implements Serializable {
+
+    @Column(name = "repair_shop_id", nullable = false)
     private Long repairShopId;
+
+    @Column(name = "repair_shop_type_id", nullable = false)
     private Long repairShopTypeId;
 }
-

@@ -17,10 +17,11 @@ import java.math.BigDecimal;
 @Builder
 @Entity
 @Table(name = "repair_shop_service_types")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class RepairShopServiceType {
 
     @EmbeddedId
-    @Column(nullable = false)
+    @EqualsAndHashCode.Include
     private RepairShopServiceTypeId id;
 
     @MapsId("repairShopId")
@@ -39,3 +40,4 @@ public class RepairShopServiceType {
     @Column(name = "price_to", precision = 10, scale = 2)
     private BigDecimal priceTo;
 }
+
