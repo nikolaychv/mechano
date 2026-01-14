@@ -47,4 +47,9 @@ public class CarBrandController {
     public void delete(@PathVariable Long id) {
         carBrandService.delete(id);
     }
+
+    @PatchMapping("/{id}/restore")
+    public CarBrandResponse restore(@PathVariable Long id) {
+        return carBrandService.restore(id);
+    }
 }
