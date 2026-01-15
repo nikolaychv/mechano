@@ -272,7 +272,7 @@ databaseChangeLog:
             columnNames: name
             constraintName: uq_repair_shop_types_name
 
-  # 5) CAR_BRANDS
+  # 5) CAR_BRANDS (original changeset)
   - changeSet:
       id: 005-create-car-brands
       author: nikolay
@@ -504,7 +504,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_bookings_car_brand
 
-        # FK: bookings.(repair_shop_id, repair_shop_type_id) -> repair_shop_service_types.(repair_shop_id, repair_shop_type_id)
         - addForeignKeyConstraint:
             baseTableName: bookings
             baseColumnNames: repair_shop_id, repair_shop_type_id
@@ -822,3 +821,40 @@ databaseChangeLog:
                 price_from IS NULL OR price_to IS NULL
                 OR price_from <= price_to
               );
+
+  # 13) CAR_BRANDS - SOFT DELETE SUPPORT (add deleted_at + partial unique index)
+  - changeSet:
+      id: 013-car-brands-soft-delete
+      author: nikolay
+      changes:
+        # 1) add deleted_at
+        - addColumn:
+            tableName: car_brands
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+
+        # 2) optional index for filtering
+        - createIndex:
+            tableName: car_brands
+            indexName: idx_car_brands_deleted_at
+            columns:
+              - column:
+                  name: deleted_at
+
+        # 3) drop old unique constraint (from the initial schema)
+        - dropUniqueConstraint:
+            tableName: car_brands
+            constraintName: uq_car_brands_name
+
+        # 4) partial unique index (PostgreSQL only)
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: >
+              CREATE UNIQUE INDEX IF NOT EXISTS uq_car_brands_name_active
+              ON car_brands (name)
+              WHERE deleted_at IS NULL;

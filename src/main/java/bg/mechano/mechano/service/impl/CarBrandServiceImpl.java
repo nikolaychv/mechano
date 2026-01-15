@@ -92,13 +92,23 @@ public class CarBrandServiceImpl implements CarBrandService {
 
     @Override
     public CarBrandResponse restore(Long id) {
+        if (id == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Id is required.");
+        }
+
         CarBrand brand = carBrandRepository.findByIdIncludingDeleted(id)
                 .orElseThrow(() -> new NotFoundException("CarBrand not found: " + id));
 
         if (brand.getDeletedAt() == null) {
-            // already active, return as-is
-            return toResponse(brand);
+            return toResponse(brand); // already active
         }
+
+        // Prevent unique index violation: (name) must be unique among ACTIVE rows
+        carBrandRepository.findByName(brand.getName()).ifPresent(active -> {
+            throw new ResponseStatusException(CONFLICT,
+                    "Cannot restore car brand '" + brand.getName()
+                            + "'. An active car brand with the same name already exists (id=" + active.getId() + ").");
+        });
 
         brand.setDeletedAt(null);
         return toResponse(carBrandRepository.save(brand));

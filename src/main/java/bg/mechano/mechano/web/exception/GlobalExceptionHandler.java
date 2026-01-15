@@ -44,10 +44,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body(status, message));
     }
 
+    /**
+     * Handles database constraint violations (unique constraints, FK constraints, etc.).
+     * Returns the root cause message to make debugging easier.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String root = rootCauseMessage(ex);
+
+        String msg = "Data integrity violation";
+        if (root != null && !root.isBlank()) {
+            msg = msg + ": " + root;
+        }
+
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(body(HttpStatus.CONFLICT, "Data integrity violation"));
+                .body(body(HttpStatus.CONFLICT, msg));
     }
 
     @ExceptionHandler(Exception.class)
@@ -66,5 +77,13 @@ public class GlobalExceptionHandler {
         m.put("error", status.getReasonPhrase());
         m.put("message", message);
         return m;
+    }
+
+    private String rootCauseMessage(Throwable ex) {
+        Throwable t = ex;
+        while (t.getCause() != null) {
+            t = t.getCause();
+        }
+        return t.getMessage();
     }
 }
