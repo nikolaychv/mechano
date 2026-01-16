@@ -4,6 +4,7 @@ import bg.mechano.mechano.domain.entity.Review;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for managing {@link Review} entities.
@@ -13,7 +14,16 @@ import java.util.List;
  */
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    List<Review> findByRepairShopIdAndIsVisibleTrue(Long repairShopId);
+    // existing
+    Optional<Review> findByIdAndDeletedAtIsNull(Long id);
 
-    List<Review> findByUserIdAndIsVisibleTrue(Long userId);
+    List<Review> findByRepairShopIdAndDeletedAtIsNull(Long repairShopId);
+
+    List<Review> findByUserIdAndDeletedAtIsNull(Long userId);
+
+    // root reviews (parents)
+    List<Review> findByRepairShopIdAndParentReviewIsNullAndDeletedAtIsNull(Long repairShopId);
+
+    // replies for a review
+    List<Review> findByParentReviewIdAndDeletedAtIsNull(Long parentReviewId);
 }

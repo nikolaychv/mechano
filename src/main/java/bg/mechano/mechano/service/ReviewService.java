@@ -2,6 +2,7 @@ package bg.mechano.mechano.service;
 
 import bg.mechano.mechano.web.dto.review.ReviewCreateRequest;
 import bg.mechano.mechano.web.dto.review.ReviewResponse;
+import bg.mechano.mechano.web.dto.review.ReviewThreadResponse;
 
 import java.util.List;
 
@@ -13,5 +14,10 @@ public interface ReviewService {
 
     List<ReviewResponse> list(Long repairShopId, Long userId);
 
-    void hide(Long id);
+    // threaded reviews
+    List<ReviewThreadResponse> listThreaded(Long repairShopId);
+
+    void delete(Long id);
+
+    void restore(Long id);
 }

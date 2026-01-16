@@ -3,6 +3,7 @@ package bg.mechano.mechano.web.controller;
 import bg.mechano.mechano.service.ReviewService;
 import bg.mechano.mechano.web.dto.review.ReviewCreateRequest;
 import bg.mechano.mechano.web.dto.review.ReviewResponse;
+import bg.mechano.mechano.web.dto.review.ReviewThreadResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,9 +37,22 @@ public class ReviewController {
         return reviewService.list(repairShopId, userId);
     }
 
+    @GetMapping("/thread")
+    public List<ReviewThreadResponse> listThreaded(
+            @RequestParam Long repairShopId
+    ) {
+        return reviewService.listThreaded(repairShopId);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        reviewService.hide(id);
+        reviewService.delete(id);
+    }
+
+    @PostMapping("/{id}/restore")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restore(@PathVariable Long id) {
+        reviewService.restore(id);
     }
 }

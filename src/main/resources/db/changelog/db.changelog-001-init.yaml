@@ -858,3 +858,39 @@ databaseChangeLog:
               CREATE UNIQUE INDEX IF NOT EXISTS uq_car_brands_name_active
               ON car_brands (name)
               WHERE deleted_at IS NULL;
+
+  # 14) REVIEWS - SOFT DELETE SUPPORT (add deleted_at + index)
+  - changeSet:
+      id: 014-reviews-soft-delete
+      author: nikolay
+      changes:
+        # 1) add deleted_at
+        - addColumn:
+            tableName: reviews
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true
+
+        # 2) optional index for filtering
+        - createIndex:
+            tableName: reviews
+            indexName: idx_reviews_deleted_at
+            columns:
+              - column:
+                  name: deleted_at
+
+  # 015) REVIEWS - REMOVE is_visible (we use deleted_at for soft delete)
+  - changeSet:
+      id: 015-reviews-drop-is-visible
+      author: nikolay
+      changes:
+        - dropIndex:
+            tableName: reviews
+            indexName: idx_reviews_is_visible
+
+        - dropColumn:
+            tableName: reviews
+            columnName: is_visible

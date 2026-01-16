@@ -63,7 +63,7 @@ class ReviewServiceImplTest {
         assertNull(saved.getParentReview());
         assertEquals(5, saved.getRatingOverall());
         assertEquals("Great service", saved.getCommentText());
-        assertTrue(saved.isVisible());
+        assertNull(saved.getDeletedAt());
         assertNotNull(saved.getCreatedAt());
 
         assertEquals(10L, response.id());
@@ -80,11 +80,14 @@ class ReviewServiceImplTest {
 
         RepairShop shop = RepairShop.builder().id(1L).build();
         User user = User.builder().id(2L).build();
-        Review parent = Review.builder().id(3L).isVisible(true).build();
+        Review parent = Review.builder()
+                .id(3L)
+                .deletedAt(null)
+                .build();
 
         when(repairShopRepository.findById(1L)).thenReturn(Optional.of(shop));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(reviewRepository.findById(3L)).thenReturn(Optional.of(parent));
+        when(reviewRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.of(parent));
         when(reviewRepository.save(any())).thenAnswer(inv -> {
             Review r = inv.getArgument(0);
             r.setId(11L);
@@ -129,14 +132,14 @@ class ReviewServiceImplTest {
                 .thenReturn(Optional.of(RepairShop.builder().id(1L).build()));
         when(userRepository.findById(2L))
                 .thenReturn(Optional.of(User.builder().id(2L).build()));
-        when(reviewRepository.findById(3L)).thenReturn(Optional.empty());
+        when(reviewRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.create(request));
         verify(reviewRepository, never()).save(any());
     }
 
     @Test
-    void getById_shouldReturnReview_whenVisible() {
+    void getById_shouldReturnReview_whenNotDeleted() {
         Review review = Review.builder()
                 .id(5L)
                 .repairShop(RepairShop.builder().id(1L).build())
@@ -144,10 +147,10 @@ class ReviewServiceImplTest {
                 .ratingOverall((short) 4)
                 .commentText("Ok")
                 .createdAt(Instant.now())
-                .isVisible(true)
+                .deletedAt(null)
                 .build();
 
-        when(reviewRepository.findById(5L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(review));
 
         ReviewResponse response = service.getById(5L);
 
@@ -156,33 +159,27 @@ class ReviewServiceImplTest {
     }
 
     @Test
-    void getById_shouldThrowNotFound_whenHidden() {
-        Review review = Review.builder()
-                .id(5L)
-                .isVisible(false)
-                .build();
-
-        when(reviewRepository.findById(5L)).thenReturn(Optional.of(review));
-
+    void getById_shouldThrowNotFound_whenDeleted() {
+        when(reviewRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.empty());
         assertThrows(NotFoundException.class, () -> service.getById(5L));
     }
 
     @Test
     void list_shouldUseFindByRepairShop_whenRepairShopIdProvided() {
-        when(reviewRepository.findByRepairShopIdAndIsVisibleTrue(1L)).thenReturn(List.of(
+        when(reviewRepository.findByRepairShopIdAndDeletedAtIsNull(1L)).thenReturn(List.of(
                 Review.builder()
                         .id(1L)
                         .repairShop(RepairShop.builder().id(1L).build())
                         .user(User.builder().id(2L).build())
-                        .isVisible(true)
+                        .deletedAt(null)
                         .createdAt(Instant.now())
                         .build()
         ));
 
         List<ReviewResponse> result = service.list(1L, null);
 
-        verify(reviewRepository).findByRepairShopIdAndIsVisibleTrue(1L);
-        verify(reviewRepository, never()).findByUserIdAndIsVisibleTrue(any());
+        verify(reviewRepository).findByRepairShopIdAndDeletedAtIsNull(1L);
+        verify(reviewRepository, never()).findByUserIdAndDeletedAtIsNull(any());
         verify(reviewRepository, never()).findAll();
 
         assertEquals(1, result.size());
@@ -190,41 +187,41 @@ class ReviewServiceImplTest {
 
     @Test
     void list_shouldUseFindByUser_whenUserIdProvided() {
-        when(reviewRepository.findByUserIdAndIsVisibleTrue(2L)).thenReturn(List.of(
+        when(reviewRepository.findByUserIdAndDeletedAtIsNull(2L)).thenReturn(List.of(
                 Review.builder()
                         .id(2L)
                         .repairShop(RepairShop.builder().id(1L).build())
                         .user(User.builder().id(2L).build())
-                        .isVisible(true)
+                        .deletedAt(null)
                         .createdAt(Instant.now())
                         .build()
         ));
 
         List<ReviewResponse> result = service.list(null, 2L);
 
-        verify(reviewRepository).findByUserIdAndIsVisibleTrue(2L);
-        verify(reviewRepository, never()).findByRepairShopIdAndIsVisibleTrue(any());
+        verify(reviewRepository).findByUserIdAndDeletedAtIsNull(2L);
+        verify(reviewRepository, never()).findByRepairShopIdAndDeletedAtIsNull(any());
         verify(reviewRepository, never()).findAll();
 
         assertEquals(1, result.size());
     }
 
     @Test
-    void list_shouldReturnAllVisible_whenNoFilters() {
-        Review visible = Review.builder()
+    void list_shouldReturnAllNotDeleted_whenNoFilters() {
+        Review active = Review.builder()
                 .id(1L)
                 .repairShop(RepairShop.builder().id(1L).build())
                 .user(User.builder().id(2L).build())
-                .isVisible(true)
+                .deletedAt(null)
                 .createdAt(Instant.now())
                 .build();
 
-        Review hidden = Review.builder()
+        Review deleted = Review.builder()
                 .id(2L)
-                .isVisible(false)
+                .deletedAt(Instant.now())
                 .build();
 
-        when(reviewRepository.findAll()).thenReturn(List.of(visible, hidden));
+        when(reviewRepository.findAll()).thenReturn(List.of(active, deleted));
 
         List<ReviewResponse> result = service.list(null, null);
 
@@ -233,26 +230,50 @@ class ReviewServiceImplTest {
     }
 
     @Test
-    void hide_shouldSetVisibleFalse_andSave() {
+    void delete_shouldSetDeletedAt_andSave() {
         Review review = Review.builder()
                 .id(9L)
-                .isVisible(true)
+                .deletedAt(null)
                 .build();
 
-        when(reviewRepository.findById(9L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdAndDeletedAtIsNull(9L)).thenReturn(Optional.of(review));
         when(reviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.hide(9L);
+        service.delete(9L);
 
-        assertFalse(review.isVisible());
+        assertNotNull(review.getDeletedAt());
         verify(reviewRepository).save(review);
     }
 
     @Test
-    void hide_shouldThrowNotFound_whenMissing() {
-        when(reviewRepository.findById(9L)).thenReturn(Optional.empty());
+    void delete_shouldThrowNotFound_whenMissing() {
+        when(reviewRepository.findByIdAndDeletedAtIsNull(9L)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> service.hide(9L));
+        assertThrows(NotFoundException.class, () -> service.delete(9L));
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void restore_shouldSetDeletedAtNull_andSave() {
+        Review review = Review.builder()
+                .id(7L)
+                .deletedAt(Instant.now())
+                .build();
+
+        when(reviewRepository.findById(7L)).thenReturn(Optional.of(review));
+        when(reviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.restore(7L);
+
+        assertNull(review.getDeletedAt());
+        verify(reviewRepository).save(review);
+    }
+
+    @Test
+    void restore_shouldThrowNotFound_whenMissing() {
+        when(reviewRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> service.restore(7L));
         verify(reviewRepository, never()).save(any());
     }
 }
