@@ -31,4 +31,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Instant endTime,
             BookingStatus cancelled
     );
+
+    @Query("""
+        select b
+        from Booking b
+        where b.deletedAt is null
+          and (:repairShopId is null or b.repairShop.id = :repairShopId)
+          and (:clientId is null or b.client.id = :clientId)
+          and (:status is null or b.status = :status)
+        order by b.createdAt desc
+    """)
+    List<Booking> findActiveByFilters(Long repairShopId, Long clientId, BookingStatus status);
 }

@@ -1,6 +1,9 @@
 package bg.mechano.mechano.web.controller;
 
+import bg.mechano.mechano.domain.enums.BookingStatus;
+import bg.mechano.mechano.service.BookingService;
 import bg.mechano.mechano.service.UserService;
+import bg.mechano.mechano.web.dto.booking.BookingResponse;
 import bg.mechano.mechano.web.dto.user.UserCreateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
 import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
@@ -17,6 +20,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final BookingService bookingService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -32,6 +36,14 @@ public class UserController {
     @GetMapping
     public List<UserResponse> list() {
         return userService.list();
+    }
+
+    @GetMapping("/{id}/bookings")
+    public List<BookingResponse> getUserBookings(
+            @PathVariable Long id,
+            @RequestParam(required = false) BookingStatus status
+    ) {
+        return bookingService.list(null, id, status);
     }
 
     @PutMapping("/{id}")

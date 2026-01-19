@@ -85,11 +85,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingResponse> list(Long repairShopId, Long clientId, BookingStatus status) {
-        return bookingRepository.findAll().stream()
-                .filter(b -> b.getDeletedAt() == null)
-                .filter(b -> repairShopId == null || b.getRepairShop().getId().equals(repairShopId))
-                .filter(b -> clientId == null || b.getClient().getId().equals(clientId))
-                .filter(b -> status == null || b.getStatus() == status)
+        return bookingRepository.findActiveByFilters(repairShopId, clientId, status)
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
