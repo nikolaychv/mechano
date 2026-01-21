@@ -24,7 +24,26 @@
 		<java.version>21</java.version>
 		<lombok.version>1.18.42</lombok.version>
 		<jacoco.version>0.8.11</jacoco.version>
+
+		<!-- Testcontainers -->
+		<testcontainers.version>1.20.4</testcontainers.version>
 	</properties>
+
+	<!-- ===================== -->
+	<!-- DEPENDENCY MANAGEMENT -->
+	<!-- ===================== -->
+	<dependencyManagement>
+		<dependencies>
+			<!-- Testcontainers BOM to keep all TC artifacts aligned -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<!-- ===================== -->
 	<!-- DEPENDENCIES -->
@@ -90,6 +109,20 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Testcontainers (JUnit 5 integration) -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers PostgreSQL module -->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<!-- ===================== -->
@@ -112,6 +145,16 @@
 							<version>${lombok.version}</version>
 						</path>
 					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+
+			<!-- (Recommended) Surefire for JUnit 5 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- makes Testcontainers + JUnit Jupiter happy, avoids module-path issues -->
+					<useModulePath>false</useModulePath>
 				</configuration>
 			</plugin>
 
