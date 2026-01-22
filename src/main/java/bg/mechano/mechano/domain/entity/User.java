@@ -45,6 +45,9 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    @Column(name = "avatar_image_id")
+    private Long avatarImageId;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 

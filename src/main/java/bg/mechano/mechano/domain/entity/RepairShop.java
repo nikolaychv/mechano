@@ -55,12 +55,16 @@ public class RepairShop {
     @Column(name = "price_range_max", precision = 10, scale = 2)
     private BigDecimal priceRangeMax;
 
+    @Column(name = "cover_image_id")
+    private Long coverImageId;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // legacy field
     @Column(name = "media_storage_key", length = 255)
     private String mediaStorageKey;
 

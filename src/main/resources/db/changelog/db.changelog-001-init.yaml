@@ -894,3 +894,128 @@ databaseChangeLog:
         - dropColumn:
             tableName: reviews
             columnName: is_visible
+
+  # =====================================================
+  # 016) IMAGE ASSETS (MEDIA STORAGE)
+  # =====================================================
+  - changeSet:
+      id: 016-create-image-assets
+      author: nikolay
+      changes:
+        - createTable:
+            tableName: image_assets
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_image_assets
+
+              - column:
+                  name: original_filename
+                  type: VARCHAR(255)
+
+              - column:
+                  name: content_type
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: size_bytes
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: width
+                  type: INT
+
+              - column:
+                  name: height
+                  type: INT
+
+              - column:
+                  name: storage_key
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: thumb_storage_key
+                  type: VARCHAR(500)
+
+              - column:
+                  name: owner_type
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: owner_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            tableName: image_assets
+            indexName: idx_image_assets_owner
+            columns:
+              - column:
+                  name: owner_type
+              - column:
+                  name: owner_id
+
+        - createIndex:
+            tableName: image_assets
+            indexName: idx_image_assets_deleted_at
+            columns:
+              - column:
+                  name: deleted_at
+
+  # =====================================================
+  # 017) USER AVATAR & REPAIR SHOP COVER IMAGE (FK)
+  # =====================================================
+  - changeSet:
+      id: 017-add-avatar-and-cover-image-ids
+      author: nikolay
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: avatar_image_id
+                  type: BIGINT
+
+        - addColumn:
+            tableName: repair_shops
+            columns:
+              - column:
+                  name: cover_image_id
+                  type: BIGINT
+
+        - addForeignKeyConstraint:
+            baseTableName: users
+            baseColumnNames: avatar_image_id
+            referencedTableName: image_assets
+            referencedColumnNames: id
+            constraintName: fk_users_avatar_image
+
+        - addForeignKeyConstraint:
+            baseTableName: repair_shops
+            baseColumnNames: cover_image_id
+            referencedTableName: image_assets
+            referencedColumnNames: id
+            constraintName: fk_repair_shops_cover_image
