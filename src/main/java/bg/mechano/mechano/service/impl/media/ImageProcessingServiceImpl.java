@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Service
 @RequiredArgsConstructor
@@ -17,45 +19,76 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
     private final MediaProperties props;
 
     @Override
-    public ProcessedImage processToJpeg(byte[] inputBytes) {
-        try (ByteArrayInputStream in = new ByteArrayInputStream(inputBytes)) {
-
-            BufferedImage original = ImageIO.read(in);
-            if (original == null) {
-                throw new IllegalArgumentException("File is not a valid image");
+    public ImageInfo readInfo(Path imageFile) {
+        try {
+            BufferedImage img = ImageIO.read(imageFile.toFile());
+            if (img == null) {
+                throw new IllegalArgumentException("File is not a valid or supported image");
             }
-
-            int maxW = props.getImage().getMaxWidth();
-            int maxH = props.getImage().getMaxHeight();
-            double quality = props.getImage().getQuality();
-
-            byte[] main = toJpegBytes(original, maxW, maxH, quality);
-
-            int thumbSize = props.getImage().getThumbSize();
-            byte[] thumb = toJpegBytes(original, thumbSize, thumbSize, Math.min(quality, 0.78));
-
-            BufferedImage mainImg = ImageIO.read(new ByteArrayInputStream(main));
-
-            return new ProcessedImage(
-                    main,
-                    thumb,
-                    mainImg.getWidth(),
-                    mainImg.getHeight(),
-                    "image/jpeg"
-            );
-
+            return new ImageInfo(img.getWidth(), img.getHeight());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to process image", e);
+            throw new IllegalArgumentException("File is not a valid or supported image", e);
         }
     }
 
-    private byte[] toJpegBytes(BufferedImage img, int maxW, int maxH, double quality) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Thumbnails.of(img)
-                .size(maxW, maxH)
-                .outputFormat("jpg")
-                .outputQuality(quality)
-                .toOutputStream(out);
-        return out.toByteArray();
+    @Override
+    public ThumbnailResult createThumbnail(Path originalFile, String originalContentType, String extension, int thumbSize) {
+        try {
+            String format = normalizeFormat(extension);
+
+            Path thumb = Files.createTempFile("mechano-thumb-", ".tmp");
+
+            try (OutputStream out = Files.newOutputStream(thumb)) {
+                var builder = Thumbnails.of(originalFile.toFile())
+                        .size(thumbSize, thumbSize)
+                        .keepAspectRatio(true)
+                        .outputFormat(format);
+
+                // Only for JPEG thumbs
+                if ("jpg".equals(format) || "jpeg".equals(format)) {
+                    builder.outputQuality(props.getImage().getThumbJpegQuality());
+                }
+
+                builder.toOutputStream(out);
+            }
+
+            long sizeBytes = Files.size(thumb);
+
+            BufferedImage thumbImg = ImageIO.read(thumb.toFile());
+            if (thumbImg == null) {
+                throw new IllegalStateException("Failed to read generated thumbnail");
+            }
+
+            // thumb content type same as original
+            String ct = normalizeContentType(originalContentType);
+
+            return new ThumbnailResult(
+                    thumb,
+                    sizeBytes,
+                    thumbImg.getWidth(),
+                    thumbImg.getHeight(),
+                    ct
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate thumbnail", e);
+        }
+    }
+
+    private String normalizeFormat(String ext) {
+        if (ext == null) throw new IllegalArgumentException("Missing extension");
+        ext = ext.toLowerCase().trim();
+        if (ext.equals("jpeg")) ext = "jpg";
+
+        return switch (ext) {
+            case "jpg" -> "jpg";
+            case "png" -> "png";
+            case "webp" -> "webp";
+            default -> throw new IllegalArgumentException("Unsupported image extension: " + ext);
+        };
+    }
+
+    private String normalizeContentType(String ct) {
+        return ct == null ? "" : ct.toLowerCase().trim();
     }
 }

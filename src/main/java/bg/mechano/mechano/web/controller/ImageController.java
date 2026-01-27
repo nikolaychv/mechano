@@ -38,9 +38,16 @@ public class ImageController {
     @GetMapping("/{id}/thumb")
     public ResponseEntity<Resource> getThumb(@PathVariable Long id) {
         ImageAsset a = imageService.getById(id);
+
+        if (a.getThumbStorageKey() == null || a.getThumbStorageKey().isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
         Resource r = storage.loadAsResource(a.getThumbStorageKey());
+        String ct = a.getThumbContentType() != null ? a.getThumbContentType() : a.getContentType();
+
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(a.getContentType()))
+                .contentType(MediaType.parseMediaType(ct))
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
                 .body(r);
     }

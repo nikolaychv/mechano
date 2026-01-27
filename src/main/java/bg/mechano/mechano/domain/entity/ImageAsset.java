@@ -40,6 +40,12 @@ public class ImageAsset {
     @Column(name = "thumb_storage_key", length = 500)
     private String thumbStorageKey;
 
+    @Column(name = "thumb_content_type", length = 100)
+    private String thumbContentType;
+
+    @Column(name = "thumb_size_bytes")
+    private Long thumbSizeBytes;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "owner_type", nullable = false, length = 30)
     private ImageOwnerType ownerType;

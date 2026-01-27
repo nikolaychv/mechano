@@ -1019,3 +1019,17 @@ databaseChangeLog:
             referencedTableName: image_assets
             referencedColumnNames: id
             constraintName: fk_repair_shops_cover_image
+
+  - changeSet:
+      id: 018-image-assets-thumb-content-type
+      author: nikolay
+      changes:
+        - addColumn:
+            tableName: image_assets
+            columns:
+              - column:
+                  name: thumb_content_type
+                  type: VARCHAR(100)
+              - column:
+                  name: thumb_size_bytes
+                  type: BIGINT
