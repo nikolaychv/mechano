@@ -33,6 +33,8 @@ public class LocalStorageService implements StorageService {
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
             return relativeKey;
 
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to save file", e);
         }
