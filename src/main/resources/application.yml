@@ -46,10 +46,15 @@ springdoc:
 mechano:
   media:
     base-dir: ./data/media
-    max-upload-bytes: 5242880 # 5MB
+    max-upload-bytes: 5242880
 
     image:
       max-width: 1600
       max-height: 1600
       thumb-size: 300
       quality: 0.82
+
+  security:
+    jwt:
+      secret: ${MECHANO_JWT_SECRET}
+      issuer: mechano-auth
