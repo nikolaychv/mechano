@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-link-users-to-auth-users
+      author: nikolay
+      changes:
+        - addColumn:
+            schemaName: public
+            tableName: users
+            columns:
+              - column:
+                  name: auth_user_id
+                  type: BIGINT
+
+        - addUniqueConstraint:
+            schemaName: public
+            tableName: users
+            columnNames: auth_user_id
+            constraintName: uq_users_auth_user_id
+
+        - addForeignKeyConstraint:
+            baseTableSchemaName: public
+            baseTableName: users
+            baseColumnNames: auth_user_id
+            referencedTableSchemaName: auth
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_users_auth_user
+            onDelete: RESTRICT
+
+        - createIndex:
+            schemaName: public
+            tableName: users
+            indexName: idx_users_auth_user_id
+            columns:
+              - column:
+                  name: auth_user_id

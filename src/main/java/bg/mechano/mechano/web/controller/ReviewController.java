@@ -7,6 +7,7 @@ import bg.mechano.mechano.web.dto.review.ReviewThreadResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,8 +20,11 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @PostMapping
+    @PreAuthorize("hasRole('USER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public ReviewResponse create(@Valid @RequestBody ReviewCreateRequest request) {
+    public ReviewResponse create(
+            @Valid @RequestBody ReviewCreateRequest request
+    ) {
         return reviewService.create(request);
     }
 
@@ -34,23 +38,30 @@ public class ReviewController {
             @RequestParam(required = false) Long repairShopId,
             @RequestParam(required = false) Long userId
     ) {
-        return reviewService.list(repairShopId, userId);
+        return reviewService.list(
+                repairShopId,
+                userId
+        );
     }
 
     @GetMapping("/thread")
     public List<ReviewThreadResponse> listThreaded(
             @RequestParam Long repairShopId
     ) {
-        return reviewService.listThreaded(repairShopId);
+        return reviewService.listThreaded(
+                repairShopId
+        );
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         reviewService.delete(id);
     }
 
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void restore(@PathVariable Long id) {
         reviewService.restore(id);

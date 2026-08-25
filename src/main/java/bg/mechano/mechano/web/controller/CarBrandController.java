@@ -7,6 +7,7 @@ import bg.mechano.mechano.web.dto.carbrand.CarBrandUpdateRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,8 +20,11 @@ public class CarBrandController {
     private final CarBrandService carBrandService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    public CarBrandResponse create(@Valid @RequestBody CarBrandCreateRequest request) {
+    public CarBrandResponse create(
+            @Valid @RequestBody CarBrandCreateRequest request
+    ) {
         return carBrandService.create(request);
     }
 
@@ -35,6 +39,7 @@ public class CarBrandController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public CarBrandResponse update(
             @PathVariable Long id,
             @Valid @RequestBody CarBrandUpdateRequest request
@@ -43,12 +48,14 @@ public class CarBrandController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         carBrandService.delete(id);
     }
 
     @PatchMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     public CarBrandResponse restore(@PathVariable Long id) {
         return carBrandService.restore(id);
     }

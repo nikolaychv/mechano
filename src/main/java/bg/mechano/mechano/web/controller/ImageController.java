@@ -6,7 +6,10 @@ import bg.mechano.mechano.service.media.StorageService;
 import bg.mechano.mechano.web.dto.media.ImageAssetResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -21,49 +24,83 @@ public class ImageController {
 
     @GetMapping("/{id}")
     public ImageAssetResponse getMeta(@PathVariable Long id) {
-        ImageAsset a = imageService.getById(id);
-        return toResponse(a);
+        ImageAsset asset = imageService.getById(id);
+        return toResponse(asset);
     }
 
     @GetMapping("/{id}/content")
     public ResponseEntity<Resource> getContent(@PathVariable Long id) {
-        ImageAsset a = imageService.getById(id);
-        Resource r = storage.loadAsResource(a.getStorageKey());
+        ImageAsset asset = imageService.getById(id);
+        Resource resource =
+                storage.loadAsResource(asset.getStorageKey());
+
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(a.getContentType()))
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
-                .body(r);
+                .contentType(
+                        MediaType.parseMediaType(
+                                asset.getContentType()
+                        )
+                )
+                .cacheControl(
+                        CacheControl
+                                .maxAge(Duration.ofDays(30))
+                                .cachePublic()
+                )
+                .body(resource);
     }
 
     @GetMapping("/{id}/thumb")
     public ResponseEntity<Resource> getThumb(@PathVariable Long id) {
-        ImageAsset a = imageService.getById(id);
+        ImageAsset asset = imageService.getById(id);
 
-        if (a.getThumbStorageKey() == null || a.getThumbStorageKey().isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (asset.getThumbStorageKey() == null
+                || asset.getThumbStorageKey().isBlank()) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .build();
         }
 
-        Resource r = storage.loadAsResource(a.getThumbStorageKey());
-        String ct = a.getThumbContentType() != null ? a.getThumbContentType() : a.getContentType();
+        Resource resource =
+                storage.loadAsResource(
+                        asset.getThumbStorageKey()
+                );
+
+        String contentType =
+                asset.getThumbContentType() != null
+                        ? asset.getThumbContentType()
+                        : asset.getContentType();
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(ct))
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
-                .body(r);
+                .contentType(
+                        MediaType.parseMediaType(contentType)
+                )
+                .cacheControl(
+                        CacheControl
+                                .maxAge(Duration.ofDays(30))
+                                .cachePublic()
+                )
+                .body(resource);
     }
 
-    private ImageAssetResponse toResponse(ImageAsset a) {
+    private ImageAssetResponse toResponse(ImageAsset asset) {
         return new ImageAssetResponse(
-                a.getId(),
-                a.getOwnerType(),
-                a.getOwnerId(),
-                a.getContentType(),
-                a.getSizeBytes(),
-                a.getWidth() == null ? 0 : a.getWidth(),
-                a.getHeight() == null ? 0 : a.getHeight(),
-                "http://localhost:8080/api/images/" + a.getId() + "/content",
-                "http://localhost:8080/api/images/" + a.getId() + "/thumb",
-                a.getCreatedAt()
+                asset.getId(),
+                asset.getOwnerType(),
+                asset.getOwnerId(),
+                asset.getContentType(),
+                asset.getSizeBytes(),
+                asset.getWidth() == null
+                        ? 0
+                        : asset.getWidth(),
+                asset.getHeight() == null
+                        ? 0
+                        : asset.getHeight(),
+                "http://localhost:8080/api/images/"
+                        + asset.getId()
+                        + "/content",
+                "http://localhost:8080/api/images/"
+                        + asset.getId()
+                        + "/thumb",
+                asset.getCreatedAt()
         );
     }
 }

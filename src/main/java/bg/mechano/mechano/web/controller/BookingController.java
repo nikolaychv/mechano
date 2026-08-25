@@ -8,6 +8,7 @@ import bg.mechano.mechano.web.dto.booking.BookingUpdateStatusRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,17 +21,22 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
+    @PreAuthorize("hasRole('USER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse create(@Valid @RequestBody BookingCreateRequest request) {
+    public BookingResponse create(
+            @Valid @RequestBody BookingCreateRequest request
+    ) {
         return bookingService.create(request);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public BookingResponse getById(@PathVariable Long id) {
         return bookingService.getById(id);
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<BookingResponse> list(
             @RequestParam(required = false) Long repairShopId,
             @RequestParam(required = false) Long clientId,
@@ -40,6 +46,7 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public BookingResponse updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody BookingUpdateStatusRequest request
@@ -48,6 +55,7 @@ public class BookingController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         bookingService.softDelete(id);

@@ -6,16 +6,6 @@ import lombok.*;
 
 import java.time.Instant;
 
-/**
- * Represents a user entity in the system.
- * This entity maps to the "users" table in the database.
- * It stores core account information used for authentication, authorization,
- * and ownership of other domain entities such as services, bookings, and reviews.
- *
- * A user can have different roles (e.g. CLIENT, SERVICE_OWNER, ADMIN),
- * which define their permissions within the platform.
- * The entity also supports soft deletion via the {@code deletedAt} field.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,6 +18,9 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "auth_user_id", unique = true)
+    private Long authUserId;
 
     @Column(nullable = false, unique = true, length = 255)
     private String email;
