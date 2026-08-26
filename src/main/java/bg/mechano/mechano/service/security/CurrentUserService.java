@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CurrentUserService {
 
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+    private static final String ROLE_USER = "ROLE_USER";
+    private static final String ROLE_SHOP_OWNER = "ROLE_SHOP_OWNER";
+
     private final UserRepository userRepository;
 
     public User getCurrentUser() {
@@ -39,10 +43,7 @@ public class CurrentUserService {
     }
 
     public Long getCurrentAuthUserId() {
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        Authentication authentication = getAuthentication();
 
         if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)) {
             throw new AccessDeniedException(
@@ -67,5 +68,44 @@ public class CurrentUserService {
                     "JWT subject is invalid."
             );
         }
+    }
+
+    public boolean isAdmin() {
+        return hasAuthority(ROLE_ADMIN);
+    }
+
+    public boolean isUser() {
+        return hasAuthority(ROLE_USER);
+    }
+
+    public boolean isShopOwner() {
+        return hasAuthority(ROLE_SHOP_OWNER);
+    }
+
+    private boolean hasAuthority(String authority) {
+        return getAuthentication()
+                .getAuthorities()
+                .stream()
+                .anyMatch(grantedAuthority ->
+                        grantedAuthority
+                                .getAuthority()
+                                .equals(authority)
+                );
+    }
+
+    private Authentication getAuthentication() {
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException(
+                    "Authentication is required."
+            );
+        }
+
+        return authentication;
     }
 }

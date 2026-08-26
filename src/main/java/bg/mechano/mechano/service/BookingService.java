@@ -22,6 +22,11 @@ public interface BookingService {
             BookingStatus status
     );
 
+    List<BookingResponse> listRepairShopBookings(
+            Long repairShopId,
+            BookingStatus status
+    );
+
     BookingResponse updateStatus(
             Long bookingId,
             BookingStatus status

@@ -34,11 +34,26 @@ public class BookingController {
     public List<BookingResponse> getCurrentUserBookings(
             @RequestParam(required = false) BookingStatus status
     ) {
-        return bookingService.listCurrentUserBookings(status);
+        return bookingService
+                .listCurrentUserBookings(status);
+    }
+
+    @GetMapping("/repair-shops/{repairShopId}")
+    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'ADMIN')")
+    public List<BookingResponse> getRepairShopBookings(
+            @PathVariable Long repairShopId,
+            @RequestParam(required = false) BookingStatus status
+    ) {
+        return bookingService.listRepairShopBookings(
+                repairShopId,
+                status
+        );
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('USER', 'SHOP_OWNER', 'ADMIN')"
+    )
     public BookingResponse getById(
             @PathVariable Long id
     ) {
@@ -60,7 +75,9 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('SHOP_OWNER', 'ADMIN')"
+    )
     public BookingResponse updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody BookingUpdateStatusRequest request
@@ -72,7 +89,9 @@ public class BookingController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('USER', 'ADMIN')"
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @PathVariable Long id

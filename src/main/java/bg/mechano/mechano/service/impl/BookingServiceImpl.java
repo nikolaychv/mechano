@@ -17,6 +17,7 @@ import bg.mechano.mechano.web.dto.booking.BookingResponse;
 import bg.mechano.mechano.web.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -115,9 +116,11 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public BookingResponse getById(Long id) {
-        return toResponse(
-                getExisting(id)
-        );
+        Booking booking = getExisting(id);
+
+        authorizeRead(booking);
+
+        return toResponse(booking);
     }
 
     @Override
@@ -127,6 +130,12 @@ public class BookingServiceImpl implements BookingService {
             Long clientId,
             BookingStatus status
     ) {
+        if (!currentUserService.isAdmin()) {
+            throw new AccessDeniedException(
+                    "Only administrators can list all bookings."
+            );
+        }
+
         return bookingRepository
                 .findActiveByFilters(
                         repairShopId,
@@ -158,11 +167,54 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listRepairShopBookings(
+            Long repairShopId,
+            BookingStatus status
+    ) {
+        RepairShop repairShop = repairShopRepository
+                .findById(repairShopId)
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                "RepairShop not found: "
+                                        + repairShopId
+                        )
+                );
+
+        if (!currentUserService.isAdmin()) {
+            User currentUser =
+                    currentUserService.getCurrentUser();
+
+            if (!repairShop
+                    .getOwner()
+                    .getId()
+                    .equals(currentUser.getId())) {
+
+                throw new AccessDeniedException(
+                        "You cannot access bookings for this repair shop."
+                );
+            }
+        }
+
+        return bookingRepository
+                .findActiveByFilters(
+                        repairShopId,
+                        null,
+                        status
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
     public BookingResponse updateStatus(
             Long bookingId,
             BookingStatus status
     ) {
         Booking booking = getExisting(bookingId);
+
+        authorizeShopManagement(booking);
 
         booking.setStatus(status);
 
@@ -175,10 +227,85 @@ public class BookingServiceImpl implements BookingService {
     public void softDelete(Long bookingId) {
         Booking booking = getExisting(bookingId);
 
+        authorizeCancellation(booking);
+
         booking.setDeletedAt(Instant.now());
         booking.setStatus(BookingStatus.CANCELLED);
 
         bookingRepository.save(booking);
+    }
+
+    private void authorizeRead(Booking booking) {
+        if (currentUserService.isAdmin()) {
+            return;
+        }
+
+        User currentUser =
+                currentUserService.getCurrentUser();
+
+        if (currentUserService.isUser()
+                && booking
+                .getClient()
+                .getId()
+                .equals(currentUser.getId())) {
+            return;
+        }
+
+        if (currentUserService.isShopOwner()
+                && booking
+                .getRepairShop()
+                .getOwner()
+                .getId()
+                .equals(currentUser.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You cannot access this booking."
+        );
+    }
+
+    private void authorizeShopManagement(Booking booking) {
+        if (currentUserService.isAdmin()) {
+            return;
+        }
+
+        User currentUser =
+                currentUserService.getCurrentUser();
+
+        if (currentUserService.isShopOwner()
+                && booking
+                .getRepairShop()
+                .getOwner()
+                .getId()
+                .equals(currentUser.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You cannot manage this booking."
+        );
+    }
+
+    private void authorizeCancellation(Booking booking) {
+        if (currentUserService.isAdmin()) {
+            return;
+        }
+
+        User currentUser =
+                currentUserService.getCurrentUser();
+
+        if (currentUserService.isUser()
+                && booking
+                .getClient()
+                .getId()
+                .equals(currentUser.getId())) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You cannot cancel this booking."
+        );
     }
 
     private Booking getExisting(Long id) {
