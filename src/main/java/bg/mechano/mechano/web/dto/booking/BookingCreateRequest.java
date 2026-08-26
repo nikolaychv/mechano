@@ -6,7 +6,6 @@ import java.time.Instant;
 
 public record BookingCreateRequest(
         @NotNull Long repairShopId,
-        @NotNull Long clientId,
         @NotNull Long serviceTypeId,
         Long carBrandId,
         String carModel,
@@ -15,5 +14,5 @@ public record BookingCreateRequest(
         String customerNameAtBooking,
         String customerPhoneAtBooking,
         String notesForService
-) {}
-
+) {
+}

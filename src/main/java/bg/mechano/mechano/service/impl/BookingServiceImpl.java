@@ -1,9 +1,17 @@
 package bg.mechano.mechano.service.impl;
 
-import bg.mechano.mechano.domain.entity.*;
+import bg.mechano.mechano.domain.entity.Booking;
+import bg.mechano.mechano.domain.entity.CarBrand;
+import bg.mechano.mechano.domain.entity.RepairShop;
+import bg.mechano.mechano.domain.entity.RepairShopType;
+import bg.mechano.mechano.domain.entity.User;
 import bg.mechano.mechano.domain.enums.BookingStatus;
-import bg.mechano.mechano.domain.repository.*;
+import bg.mechano.mechano.domain.repository.BookingRepository;
+import bg.mechano.mechano.domain.repository.CarBrandRepository;
+import bg.mechano.mechano.domain.repository.RepairShopRepository;
+import bg.mechano.mechano.domain.repository.RepairShopTypeRepository;
 import bg.mechano.mechano.service.BookingService;
+import bg.mechano.mechano.service.security.CurrentUserService;
 import bg.mechano.mechano.web.dto.booking.BookingCreateRequest;
 import bg.mechano.mechano.web.dto.booking.BookingResponse;
 import bg.mechano.mechano.web.exception.NotFoundException;
@@ -23,16 +31,27 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
     private final RepairShopRepository repairShopRepository;
-    private final UserRepository userRepository;
     private final RepairShopTypeRepository repairShopTypeRepository;
     private final CarBrandRepository carBrandRepository;
+    private final CurrentUserService currentUserService;
 
     @Override
     public BookingResponse create(BookingCreateRequest request) {
-        validateTime(request.startTime(), request.endTime());
+        validateTime(
+                request.startTime(),
+                request.endTime()
+        );
 
-        RepairShop repairShop = repairShopRepository.findById(request.repairShopId())
-                .orElseThrow(() -> new NotFoundException("RepairShop not found: " + request.repairShopId()));
+        User client = currentUserService.getCurrentUser();
+
+        RepairShop repairShop = repairShopRepository
+                .findById(request.repairShopId())
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                "RepairShop not found: "
+                                        + request.repairShopId()
+                        )
+                );
 
         if (bookingRepository.existsOverlappingBooking(
                 repairShop.getId(),
@@ -46,15 +65,24 @@ public class BookingServiceImpl implements BookingService {
             );
         }
 
-        User client = userRepository.findById(request.clientId())
-                .orElseThrow(() -> new NotFoundException("Client not found: " + request.clientId()));
-
-        RepairShopType type = repairShopTypeRepository.findById(request.serviceTypeId())
-                .orElseThrow(() -> new NotFoundException("RepairShopType not found: " + request.serviceTypeId()));
+        RepairShopType type = repairShopTypeRepository
+                .findById(request.serviceTypeId())
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                "RepairShopType not found: "
+                                        + request.serviceTypeId()
+                        )
+                );
 
         CarBrand brand = request.carBrandId() != null
-                ? carBrandRepository.findById(request.carBrandId())
-                .orElseThrow(() -> new NotFoundException("CarBrand not found: " + request.carBrandId()))
+                ? carBrandRepository
+                .findById(request.carBrandId())
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                "CarBrand not found: "
+                                        + request.carBrandId()
+                        )
+                )
                 : null;
 
         Booking booking = Booking.builder()
@@ -66,87 +94,160 @@ public class BookingServiceImpl implements BookingService {
                 .startTime(request.startTime())
                 .endTime(request.endTime())
                 .status(BookingStatus.PENDING)
-                .customerNameAtBooking(trim(request.customerNameAtBooking()))
-                .customerPhoneAtBooking(trim(request.customerPhoneAtBooking()))
-                .notesForService(trim(request.notesForService()))
+                .customerNameAtBooking(
+                        trim(request.customerNameAtBooking())
+                )
+                .customerPhoneAtBooking(
+                        trim(request.customerPhoneAtBooking())
+                )
+                .notesForService(
+                        trim(request.notesForService())
+                )
                 .createdAt(Instant.now())
                 .deletedAt(null)
                 .build();
 
-        return toResponse(bookingRepository.save(booking));
+        return toResponse(
+                bookingRepository.save(booking)
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
     public BookingResponse getById(Long id) {
-        return toResponse(getExisting(id));
+        return toResponse(
+                getExisting(id)
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<BookingResponse> list(Long repairShopId, Long clientId, BookingStatus status) {
-        return bookingRepository.findActiveByFilters(repairShopId, clientId, status)
+    public List<BookingResponse> list(
+            Long repairShopId,
+            Long clientId,
+            BookingStatus status
+    ) {
+        return bookingRepository
+                .findActiveByFilters(
+                        repairShopId,
+                        clientId,
+                        status
+                )
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public BookingResponse updateStatus(Long bookingId, BookingStatus status) {
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listCurrentUserBookings(
+            BookingStatus status
+    ) {
+        Long currentUserId =
+                currentUserService.getCurrentUserId();
+
+        return bookingRepository
+                .findActiveByFilters(
+                        null,
+                        currentUserId,
+                        status
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    public BookingResponse updateStatus(
+            Long bookingId,
+            BookingStatus status
+    ) {
         Booking booking = getExisting(bookingId);
+
         booking.setStatus(status);
-        return toResponse(bookingRepository.save(booking));
+
+        return toResponse(
+                bookingRepository.save(booking)
+        );
     }
 
     @Override
     public void softDelete(Long bookingId) {
         Booking booking = getExisting(bookingId);
+
         booking.setDeletedAt(Instant.now());
         booking.setStatus(BookingStatus.CANCELLED);
+
         bookingRepository.save(booking);
     }
 
     private Booking getExisting(Long id) {
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+        Booking booking = bookingRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new NotFoundException(
+                                "Booking not found: " + id
+                        )
+                );
 
         if (booking.getDeletedAt() != null) {
-            throw new NotFoundException("Booking not found: " + id);
+            throw new NotFoundException(
+                    "Booking not found: " + id
+            );
         }
+
         return booking;
     }
 
-    private void validateTime(Instant start, Instant end) {
+    private void validateTime(
+            Instant start,
+            Instant end
+    ) {
         if (start == null || end == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start and end time are required");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Start and end time are required"
+            );
         }
+
         if (!start.isBefore(end)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before endTime");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "startTime must be before endTime"
+            );
         }
+
         if (start.isBefore(Instant.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be in the future");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "startTime must be in the future"
+            );
         }
     }
 
-    private BookingResponse toResponse(Booking b) {
+    private BookingResponse toResponse(Booking booking) {
         return new BookingResponse(
-                b.getId(),
-                b.getRepairShop().getId(),
-                b.getClient().getId(),
-                b.getRepairShopType().getId(),
-                b.getCarBrand() != null ? b.getCarBrand().getId() : null,
-                b.getCarModel(),
-                b.getStartTime(),
-                b.getEndTime(),
-                b.getStatus(),
-                b.getCustomerNameAtBooking(),
-                b.getCustomerPhoneAtBooking(),
-                b.getNotesForService(),
-                b.getCreatedAt()
+                booking.getId(),
+                booking.getRepairShop().getId(),
+                booking.getClient().getId(),
+                booking.getRepairShopType().getId(),
+                booking.getCarBrand() != null
+                        ? booking.getCarBrand().getId()
+                        : null,
+                booking.getCarModel(),
+                booking.getStartTime(),
+                booking.getEndTime(),
+                booking.getStatus(),
+                booking.getCustomerNameAtBooking(),
+                booking.getCustomerPhoneAtBooking(),
+                booking.getNotesForService(),
+                booking.getCreatedAt()
         );
     }
 
-    private String trim(String s) {
-        return s == null ? null : s.trim();
+    private String trim(String value) {
+        return value == null
+                ? null
+                : value.trim();
     }
 }

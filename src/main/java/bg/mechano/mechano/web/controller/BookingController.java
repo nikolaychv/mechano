@@ -29,9 +29,19 @@ public class BookingController {
         return bookingService.create(request);
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('USER')")
+    public List<BookingResponse> getCurrentUserBookings(
+            @RequestParam(required = false) BookingStatus status
+    ) {
+        return bookingService.listCurrentUserBookings(status);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public BookingResponse getById(@PathVariable Long id) {
+    public BookingResponse getById(
+            @PathVariable Long id
+    ) {
         return bookingService.getById(id);
     }
 
@@ -42,7 +52,11 @@ public class BookingController {
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) BookingStatus status
     ) {
-        return bookingService.list(repairShopId, clientId, status);
+        return bookingService.list(
+                repairShopId,
+                clientId,
+                status
+        );
     }
 
     @PatchMapping("/{id}/status")
@@ -51,13 +65,18 @@ public class BookingController {
             @PathVariable Long id,
             @Valid @RequestBody BookingUpdateStatusRequest request
     ) {
-        return bookingService.updateStatus(id, request.status());
+        return bookingService.updateStatus(
+                id,
+                request.status()
+        );
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(
+            @PathVariable Long id
+    ) {
         bookingService.softDelete(id);
     }
 }

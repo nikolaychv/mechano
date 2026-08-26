@@ -12,10 +12,20 @@ public interface BookingService {
 
     BookingResponse getById(Long id);
 
-    List<BookingResponse> list(Long repairShopId, Long clientId, BookingStatus status);
+    List<BookingResponse> list(
+            Long repairShopId,
+            Long clientId,
+            BookingStatus status
+    );
 
-    BookingResponse updateStatus(Long bookingId, BookingStatus status);
+    List<BookingResponse> listCurrentUserBookings(
+            BookingStatus status
+    );
+
+    BookingResponse updateStatus(
+            Long bookingId,
+            BookingStatus status
+    );
 
     void softDelete(Long bookingId);
 }
-
