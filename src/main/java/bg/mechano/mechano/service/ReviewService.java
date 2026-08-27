@@ -12,10 +12,16 @@ public interface ReviewService {
 
     ReviewResponse getById(Long id);
 
-    List<ReviewResponse> list(Long repairShopId, Long userId);
+    List<ReviewResponse> list(
+            Long repairShopId,
+            Long userId
+    );
 
-    // threaded reviews
-    List<ReviewThreadResponse> listThreaded(Long repairShopId);
+    List<ReviewResponse> listCurrentUserReviews();
+
+    List<ReviewThreadResponse> listThreaded(
+            Long repairShopId
+    );
 
     void delete(Long id);
 

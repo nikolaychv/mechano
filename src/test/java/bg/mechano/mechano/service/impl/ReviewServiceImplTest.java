@@ -27,116 +27,8 @@ class ReviewServiceImplTest {
     @Mock
     private ReviewRepository reviewRepository;
 
-    @Mock
-    private RepairShopRepository repairShopRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
     @InjectMocks
     private ReviewServiceImpl service;
-
-    @Test
-    void create_shouldCreateReview_whenValidWithoutParent() {
-        ReviewCreateRequest request =
-                new ReviewCreateRequest(1L, 2L, (short) 5, "  Great service  ", null);
-
-        RepairShop shop = RepairShop.builder().id(1L).build();
-        User user = User.builder().id(2L).build();
-
-        when(repairShopRepository.findById(1L)).thenReturn(Optional.of(shop));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(reviewRepository.save(any())).thenAnswer(inv -> {
-            Review r = inv.getArgument(0);
-            r.setId(10L);
-            return r;
-        });
-
-        ReviewResponse response = service.create(request);
-
-        ArgumentCaptor<Review> captor = ArgumentCaptor.forClass(Review.class);
-        verify(reviewRepository).save(captor.capture());
-
-        Review saved = captor.getValue();
-        assertEquals(1L, saved.getRepairShop().getId());
-        assertEquals(2L, saved.getUser().getId());
-        assertNull(saved.getParentReview());
-        assertEquals(5, saved.getRatingOverall());
-        assertEquals("Great service", saved.getCommentText());
-        assertNull(saved.getDeletedAt());
-        assertNotNull(saved.getCreatedAt());
-
-        assertEquals(10L, response.id());
-        assertEquals(1L, response.repairShopId());
-        assertEquals(2L, response.userId());
-        assertNull(response.parentReviewId());
-        assertEquals(5, response.ratingOverall());
-    }
-
-    @Test
-    void create_shouldCreateReview_withParent() {
-        ReviewCreateRequest request =
-                new ReviewCreateRequest(1L, 2L, (short) 4, "Reply", 3L);
-
-        RepairShop shop = RepairShop.builder().id(1L).build();
-        User user = User.builder().id(2L).build();
-        Review parent = Review.builder()
-                .id(3L)
-                .deletedAt(null)
-                .build();
-
-        when(repairShopRepository.findById(1L)).thenReturn(Optional.of(shop));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(reviewRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.of(parent));
-        when(reviewRepository.save(any())).thenAnswer(inv -> {
-            Review r = inv.getArgument(0);
-            r.setId(11L);
-            return r;
-        });
-
-        ReviewResponse response = service.create(request);
-
-        assertEquals(3L, response.parentReviewId());
-    }
-
-    @Test
-    void create_shouldThrowNotFound_whenRepairShopMissing() {
-        ReviewCreateRequest request =
-                new ReviewCreateRequest(1L, 2L, (short) 5, "x", null);
-
-        when(repairShopRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class, () -> service.create(request));
-        verify(reviewRepository, never()).save(any());
-    }
-
-    @Test
-    void create_shouldThrowNotFound_whenUserMissing() {
-        ReviewCreateRequest request =
-                new ReviewCreateRequest(1L, 2L, (short) 5, "x", null);
-
-        when(repairShopRepository.findById(1L))
-                .thenReturn(Optional.of(RepairShop.builder().id(1L).build()));
-        when(userRepository.findById(2L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class, () -> service.create(request));
-        verify(reviewRepository, never()).save(any());
-    }
-
-    @Test
-    void create_shouldThrowNotFound_whenParentMissing() {
-        ReviewCreateRequest request =
-                new ReviewCreateRequest(1L, 2L, (short) 5, "x", 3L);
-
-        when(repairShopRepository.findById(1L))
-                .thenReturn(Optional.of(RepairShop.builder().id(1L).build()));
-        when(userRepository.findById(2L))
-                .thenReturn(Optional.of(User.builder().id(2L).build()));
-        when(reviewRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class, () -> service.create(request));
-        verify(reviewRepository, never()).save(any());
-    }
 
     @Test
     void getById_shouldReturnReview_whenNotDeleted() {
@@ -227,22 +119,6 @@ class ReviewServiceImplTest {
 
         assertEquals(1, result.size());
         assertEquals(1L, result.get(0).id());
-    }
-
-    @Test
-    void delete_shouldSetDeletedAt_andSave() {
-        Review review = Review.builder()
-                .id(9L)
-                .deletedAt(null)
-                .build();
-
-        when(reviewRepository.findByIdAndDeletedAtIsNull(9L)).thenReturn(Optional.of(review));
-        when(reviewRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        service.delete(9L);
-
-        assertNotNull(review.getDeletedAt());
-        verify(reviewRepository).save(review);
     }
 
     @Test

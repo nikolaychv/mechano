@@ -9,16 +9,11 @@ public record ReviewCreateRequest(
         @NotNull
         Long repairShopId,
 
-        @NotNull
-        Long userId,
-
         @Min(1)
         @Max(5)
         short ratingOverall,
 
         @Size(max = 5000)
-        String commentText,
-
-        Long parentReviewId
+        String commentText
 ) {
 }

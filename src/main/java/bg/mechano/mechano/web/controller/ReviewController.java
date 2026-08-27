@@ -28,8 +28,16 @@ public class ReviewController {
         return reviewService.create(request);
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('USER')")
+    public List<ReviewResponse> getCurrentUserReviews() {
+        return reviewService.listCurrentUserReviews();
+    }
+
     @GetMapping("/{id}")
-    public ReviewResponse getById(@PathVariable Long id) {
+    public ReviewResponse getById(
+            @PathVariable Long id
+    ) {
         return reviewService.getById(id);
     }
 
@@ -54,16 +62,22 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('USER', 'ADMIN')"
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(
+            @PathVariable Long id
+    ) {
         reviewService.delete(id);
     }
 
     @PostMapping("/{id}/restore")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void restore(@PathVariable Long id) {
+    public void restore(
+            @PathVariable Long id
+    ) {
         reviewService.restore(id);
     }
 }
