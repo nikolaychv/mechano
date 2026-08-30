@@ -12,9 +12,17 @@ public interface RepairShopService {
 
     RepairShopResponse getById(Long id);
 
-    List<RepairShopResponse> list(String city, Boolean onlyActive);
+    List<RepairShopResponse> list(
+            String city,
+            Boolean onlyActive
+    );
 
-    RepairShopResponse update(Long id, RepairShopUpdateRequest request);
+    List<RepairShopResponse> listCurrentOwnerRepairShops();
+
+    RepairShopResponse update(
+            Long id,
+            RepairShopUpdateRequest request
+    );
 
     void softDelete(Long id);
 }

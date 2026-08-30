@@ -20,7 +20,7 @@ public class RepairShopController {
     private final RepairShopService repairShopService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     @ResponseStatus(HttpStatus.CREATED)
     public RepairShopResponse create(
             @Valid @RequestBody RepairShopCreateRequest request
@@ -28,8 +28,17 @@ public class RepairShopController {
         return repairShopService.create(request);
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public List<RepairShopResponse> getCurrentOwnerRepairShops() {
+        return repairShopService
+                .listCurrentOwnerRepairShops();
+    }
+
     @GetMapping("/{id}")
-    public RepairShopResponse getById(@PathVariable Long id) {
+    public RepairShopResponse getById(
+            @PathVariable Long id
+    ) {
         return repairShopService.getById(id);
     }
 
@@ -45,18 +54,27 @@ public class RepairShopController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('SHOP_OWNER', 'ADMIN')"
+    )
     public RepairShopResponse update(
             @PathVariable Long id,
             @Valid @RequestBody RepairShopUpdateRequest request
     ) {
-        return repairShopService.update(id, request);
+        return repairShopService.update(
+                id,
+                request
+        );
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('SHOP_OWNER', 'ADMIN')"
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(
+            @PathVariable Long id
+    ) {
         repairShopService.softDelete(id);
     }
 }

@@ -1,15 +1,11 @@
 package bg.mechano.mechano.web.dto.repairshop;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
 public record RepairShopCreateRequest(
-        @NotNull
-        Long ownerId,
-
         @NotBlank
         @Size(max = 255)
         String name,
@@ -33,6 +29,7 @@ public record RepairShopCreateRequest(
         String description,
 
         BigDecimal priceRangeMin,
+
         BigDecimal priceRangeMax
 ) {
 }
