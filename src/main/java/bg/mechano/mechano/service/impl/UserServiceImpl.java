@@ -1,10 +1,11 @@
 package bg.mechano.mechano.service.impl;
 
 import bg.mechano.mechano.domain.entity.User;
-import bg.mechano.mechano.domain.enums.UserRole;
 import bg.mechano.mechano.domain.repository.UserRepository;
 import bg.mechano.mechano.service.UserService;
+import bg.mechano.mechano.service.security.CurrentUserService;
 import bg.mechano.mechano.web.dto.user.UserCreateRequest;
+import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
 import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
 import bg.mechano.mechano.web.exception.NotFoundException;
@@ -23,18 +24,25 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final CurrentUserService currentUserService;
 
     @Override
     public UserResponse create(UserCreateRequest request) {
         String email = normalize(request.email());
         String username = normalize(request.username());
 
-        userRepository.findByEmail(email).ifPresent(u -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        userRepository.findByEmail(email).ifPresent(user -> {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Email already exists"
+            );
         });
 
-        userRepository.findByUsername(username).ifPresent(u -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
+        userRepository.findByUsername(username).ifPresent(user -> {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Username already exists"
+            );
         });
 
         User user = User.builder()
@@ -53,6 +61,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    public UserResponse getCurrentUser() {
+        return toResponse(currentUserService.getCurrentUser());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public UserResponse getById(Long id) {
         return toResponse(getExisting(id));
     }
@@ -61,21 +75,49 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public List<UserResponse> list() {
         return userRepository.findAll().stream()
-                .filter(u -> u.getDeletedAt() == null)
+                .filter(user -> user.getDeletedAt() == null)
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public UserResponse update(Long id, UserUpdateRequest request) {
-        User user = getExisting(id);
+    public UserResponse updateCurrentUser(
+            UserProfileUpdateRequest request
+    ) {
+        User user = currentUserService.getCurrentUser();
 
         if (request.fullName() != null) {
-            user.setFullName(request.fullName().trim());
+            user.setFullName(
+                    normalizeNullable(request.fullName())
+            );
         }
 
         if (request.phone() != null) {
-            user.setPhone(request.phone().trim());
+            user.setPhone(
+                    normalizeNullable(request.phone())
+            );
+        }
+
+        return toResponse(userRepository.save(user));
+    }
+
+    @Override
+    public UserResponse update(
+            Long id,
+            UserUpdateRequest request
+    ) {
+        User user = getExisting(id);
+
+        if (request.fullName() != null) {
+            user.setFullName(
+                    normalizeNullable(request.fullName())
+            );
+        }
+
+        if (request.phone() != null) {
+            user.setPhone(
+                    normalizeNullable(request.phone())
+            );
         }
 
         if (request.isActive() != null) {
@@ -88,48 +130,72 @@ public class UserServiceImpl implements UserService {
     @Override
     public void softDelete(Long id) {
         User user = getExisting(id);
+
         user.setDeletedAt(Instant.now());
         user.setActive(false);
+
         userRepository.save(user);
     }
 
     private User getExisting(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found: " + id));
+                .orElseThrow(
+                        () -> new NotFoundException(
+                                "User not found: " + id
+                        )
+                );
 
         if (user.getDeletedAt() != null) {
-            throw new NotFoundException("User not found: " + id);
+            throw new NotFoundException(
+                    "User not found: " + id
+            );
         }
+
         return user;
     }
 
-    private UserResponse toResponse(User u) {
+    private UserResponse toResponse(User user) {
         return new UserResponse(
-                u.getId(),
-                u.getEmail(),
-                u.getFullName(),
-                u.getUsername(),
-                u.getPhone(),
-                u.getRole(),
-                u.isActive(),
-                u.getCreatedAt()
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getUsername(),
+                user.getPhone(),
+                user.getRole(),
+                user.isActive(),
+                user.getCreatedAt()
         );
     }
 
-    private String normalize(String s) {
-        if (s == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Required field is missing");
+    private String normalize(String value) {
+        if (value == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Required field is missing"
+            );
         }
-        String t = s.trim();
-        if (t.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Required field is blank");
+
+        String normalized = value.trim();
+
+        if (normalized.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Required field is blank"
+            );
         }
-        return t;
+
+        return normalized;
     }
 
-    private String normalizeNullable(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        return t.isBlank() ? null : t;
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+
+        return normalized.isBlank()
+                ? null
+                : normalized;
     }
 }

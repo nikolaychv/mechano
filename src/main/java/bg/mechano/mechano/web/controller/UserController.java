@@ -5,6 +5,7 @@ import bg.mechano.mechano.service.BookingService;
 import bg.mechano.mechano.service.UserService;
 import bg.mechano.mechano.web.dto.booking.BookingResponse;
 import bg.mechano.mechano.web.dto.user.UserCreateRequest;
+import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
 import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
 import jakarta.validation.Valid;
@@ -30,6 +31,20 @@ public class UserController {
             @Valid @RequestBody UserCreateRequest request
     ) {
         return userService.create(request);
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('USER','SHOP_OWNER','ADMIN')")
+    public UserResponse getCurrentUser() {
+        return userService.getCurrentUser();
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("hasAnyRole('USER','SHOP_OWNER','ADMIN')")
+    public UserResponse updateCurrentUser(
+            @Valid @RequestBody UserProfileUpdateRequest request
+    ) {
+        return userService.updateCurrentUser(request);
     }
 
     @GetMapping("/{id}")
