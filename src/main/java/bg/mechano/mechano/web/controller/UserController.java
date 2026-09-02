@@ -4,7 +4,6 @@ import bg.mechano.mechano.domain.enums.BookingStatus;
 import bg.mechano.mechano.service.BookingService;
 import bg.mechano.mechano.service.UserService;
 import bg.mechano.mechano.web.dto.booking.BookingResponse;
-import bg.mechano.mechano.web.dto.user.UserCreateRequest;
 import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
 import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
@@ -23,15 +22,6 @@ public class UserController {
 
     private final UserService userService;
     private final BookingService bookingService;
-
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse create(
-            @Valid @RequestBody UserCreateRequest request
-    ) {
-        return userService.create(request);
-    }
 
     @GetMapping("/me")
     @PreAuthorize("hasAnyRole('USER','SHOP_OWNER','ADMIN')")
