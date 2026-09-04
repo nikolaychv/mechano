@@ -15,23 +15,26 @@ public class CurrentUserService {
 
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_USER = "ROLE_USER";
-    private static final String ROLE_SHOP_OWNER = "ROLE_SHOP_OWNER";
+    private static final String ROLE_SHOP_OWNER =
+            "ROLE_SHOP_OWNER";
 
     private final UserRepository userRepository;
 
     public User getCurrentUser() {
         Long authUserId = getCurrentAuthUserId();
 
-        User user = userRepository.findByAuthUserId(authUserId)
+        User user = userRepository
+                .findByAuthUserId(authUserId)
                 .orElseThrow(() ->
                         new AccessDeniedException(
-                                "Authenticated user is not linked to a Mechano user."
+                                "Authenticated user is not linked "
+                                        + "to a Mechano profile."
                         )
                 );
 
-        if (!user.isActive() || user.getDeletedAt() != null) {
+        if (user.getDeletedAt() != null) {
             throw new AccessDeniedException(
-                    "Mechano user is inactive."
+                    "Mechano user profile is unavailable."
             );
         }
 
@@ -43,9 +46,12 @@ public class CurrentUserService {
     }
 
     public Long getCurrentAuthUserId() {
-        Authentication authentication = getAuthentication();
+        Authentication authentication =
+                getAuthentication();
 
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)) {
+        if (!(authentication
+                instanceof JwtAuthenticationToken
+                jwtAuthentication)) {
             throw new AccessDeniedException(
                     "JWT authentication is required."
             );

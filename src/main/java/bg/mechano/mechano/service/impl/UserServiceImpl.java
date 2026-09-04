@@ -6,13 +6,11 @@ import bg.mechano.mechano.service.UserService;
 import bg.mechano.mechano.service.security.CurrentUserService;
 import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
-import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
 import bg.mechano.mechano.web.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -26,7 +24,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser() {
-        return toResponse(currentUserService.getCurrentUser());
+        return toResponse(
+                currentUserService.getCurrentUser()
+        );
     }
 
     @Override
@@ -38,8 +38,11 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> list() {
-        return userRepository.findAll().stream()
-                .filter(user -> user.getDeletedAt() == null)
+        return userRepository.findAll()
+                .stream()
+                .filter(user ->
+                        user.getDeletedAt() == null
+                )
                 .map(this::toResponse)
                 .toList();
     }
@@ -48,57 +51,28 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateCurrentUser(
             UserProfileUpdateRequest request
     ) {
-        User user = currentUserService.getCurrentUser();
+        User user =
+                currentUserService.getCurrentUser();
 
-        if (request.fullName() != null) {
-            user.setFullName(
-                    normalizeNullable(request.fullName())
-            );
-        }
+        applyProfileUpdate(user, request);
 
-        if (request.phone() != null) {
-            user.setPhone(
-                    normalizeNullable(request.phone())
-            );
-        }
-
-        return toResponse(userRepository.save(user));
+        return toResponse(
+                userRepository.save(user)
+        );
     }
 
     @Override
     public UserResponse update(
             Long id,
-            UserUpdateRequest request
+            UserProfileUpdateRequest request
     ) {
         User user = getExisting(id);
 
-        if (request.fullName() != null) {
-            user.setFullName(
-                    normalizeNullable(request.fullName())
-            );
-        }
+        applyProfileUpdate(user, request);
 
-        if (request.phone() != null) {
-            user.setPhone(
-                    normalizeNullable(request.phone())
-            );
-        }
-
-        if (request.isActive() != null) {
-            user.setActive(request.isActive());
-        }
-
-        return toResponse(userRepository.save(user));
-    }
-
-    @Override
-    public void softDelete(Long id) {
-        User user = getExisting(id);
-
-        user.setDeletedAt(Instant.now());
-        user.setActive(false);
-
-        userRepository.save(user);
+        return toResponse(
+                userRepository.save(user)
+        );
     }
 
     private User getExisting(Long id) {
@@ -118,15 +92,34 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
+    private void applyProfileUpdate(
+            User user,
+            UserProfileUpdateRequest request
+    ) {
+        if (request.fullName() != null) {
+            user.setFullName(
+                    normalizeNullable(
+                            request.fullName()
+                    )
+            );
+        }
+
+        if (request.phone() != null) {
+            user.setPhone(
+                    normalizeNullable(
+                            request.phone()
+                    )
+            );
+        }
+    }
+
     private UserResponse toResponse(User user) {
         return new UserResponse(
                 user.getId(),
-                user.getEmail(),
+                user.getAuthUserId(),
                 user.getFullName(),
-                user.getUsername(),
                 user.getPhone(),
-                user.getRole(),
-                user.isActive(),
+                user.getAvatarImageId(),
                 user.getCreatedAt()
         );
     }

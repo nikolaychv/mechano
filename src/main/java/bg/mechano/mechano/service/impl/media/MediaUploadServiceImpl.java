@@ -23,7 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class MediaUploadServiceImpl implements MediaUploadService {
+public class MediaUploadServiceImpl
+        implements MediaUploadService {
 
     private final ImageAssetService imageAssetService;
     private final CurrentUserService currentUserService;
@@ -40,7 +41,6 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         User user = userRepository.findById(userId)
                 .filter(u ->
                         u.getDeletedAt() == null
-                                && u.isActive()
                 )
                 .orElseThrow(() ->
                         new NotFoundException(
@@ -50,11 +50,12 @@ public class MediaUploadServiceImpl implements MediaUploadService {
 
         authorizeAvatarUpload(user);
 
-        ImageAsset asset = imageAssetService.upload(
-                file,
-                ImageOwnerType.USER_AVATAR,
-                user.getId()
-        );
+        ImageAsset asset =
+                imageAssetService.upload(
+                        file,
+                        ImageOwnerType.USER_AVATAR,
+                        user.getId()
+                );
 
         user.setAvatarImageId(asset.getId());
         userRepository.save(user);
@@ -69,7 +70,9 @@ public class MediaUploadServiceImpl implements MediaUploadService {
     ) {
         RepairShop shop = repairShopRepository
                 .findById(repairShopId)
-                .filter(s -> s.getDeletedAt() == null)
+                .filter(s ->
+                        s.getDeletedAt() == null
+                )
                 .orElseThrow(() ->
                         new NotFoundException(
                                 "RepairShop not found: "
@@ -79,11 +82,12 @@ public class MediaUploadServiceImpl implements MediaUploadService {
 
         authorizeRepairShopCoverUpload(shop);
 
-        ImageAsset asset = imageAssetService.upload(
-                file,
-                ImageOwnerType.REPAIR_SHOP_COVER,
-                shop.getId()
-        );
+        ImageAsset asset =
+                imageAssetService.upload(
+                        file,
+                        ImageOwnerType.REPAIR_SHOP_COVER,
+                        shop.getId()
+                );
 
         shop.setCoverImageId(asset.getId());
         repairShopRepository.save(shop);
@@ -100,7 +104,8 @@ public class MediaUploadServiceImpl implements MediaUploadService {
                 .findByIdAndDeletedAtIsNull(reviewId)
                 .orElseThrow(() ->
                         new NotFoundException(
-                                "Review not found: " + reviewId
+                                "Review not found: "
+                                        + reviewId
                         )
                 );
 
@@ -120,10 +125,13 @@ public class MediaUploadServiceImpl implements MediaUploadService {
     ) {
         Booking booking = bookingRepository
                 .findById(bookingId)
-                .filter(b -> b.getDeletedAt() == null)
+                .filter(b ->
+                        b.getDeletedAt() == null
+                )
                 .orElseThrow(() ->
                         new NotFoundException(
-                                "Booking not found: " + bookingId
+                                "Booking not found: "
+                                        + bookingId
                         )
                 );
 
@@ -136,7 +144,9 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         );
     }
 
-    private void authorizeAvatarUpload(User user) {
+    private void authorizeAvatarUpload(
+            User user
+    ) {
         if (currentUserService.isAdmin()) {
             return;
         }
@@ -144,12 +154,14 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         User currentUser =
                 currentUserService.getCurrentUser();
 
-        if (user.getId().equals(currentUser.getId())) {
+        if (user.getId()
+                .equals(currentUser.getId())) {
             return;
         }
 
         throw new AccessDeniedException(
-                "You cannot upload an avatar for this user."
+                "You cannot upload an avatar "
+                        + "for this user."
         );
     }
 
@@ -171,7 +183,8 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         }
 
         throw new AccessDeniedException(
-                "You cannot upload a cover for this repair shop."
+                "You cannot upload a cover "
+                        + "for this repair shop."
         );
     }
 
@@ -193,7 +206,8 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         }
 
         throw new AccessDeniedException(
-                "You cannot upload an image for this review."
+                "You cannot upload an image "
+                        + "for this review."
         );
     }
 
@@ -223,7 +237,8 @@ public class MediaUploadServiceImpl implements MediaUploadService {
         }
 
         throw new AccessDeniedException(
-                "You cannot upload an image for this booking."
+                "You cannot upload an image "
+                        + "for this booking."
         );
     }
 }

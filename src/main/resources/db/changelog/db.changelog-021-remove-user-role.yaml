@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-remove-duplicate-user-role
+      author: nikolay
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE public.users
+                DROP CONSTRAINT IF EXISTS chk_users_role;
+
+              DROP INDEX IF EXISTS public.idx_users_role;
+
+              ALTER TABLE public.users
+                DROP COLUMN IF EXISTS role;

@@ -1,12 +1,10 @@
 package bg.mechano.mechano.service.impl;
 
 import bg.mechano.mechano.domain.entity.User;
-import bg.mechano.mechano.domain.enums.UserRole;
 import bg.mechano.mechano.domain.repository.UserRepository;
 import bg.mechano.mechano.service.security.CurrentUserService;
 import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
-import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
 import bg.mechano.mechano.web.exception.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,26 +38,33 @@ class UserServiceImplTest {
         when(currentUserService.getCurrentUser())
                 .thenReturn(user);
 
-        UserResponse response = service.getCurrentUser();
+        UserResponse response =
+                service.getCurrentUser();
 
         assertEquals(3L, response.id());
-        assertEquals("test@test.com", response.email());
-        assertEquals("testuser", response.username());
-        assertEquals(UserRole.CLIENT, response.role());
+        assertEquals(1L, response.authUserId());
+        assertEquals(
+                "Test User",
+                response.fullName()
+        );
+        assertEquals(
+                "0888123456",
+                response.phone()
+        );
     }
 
     @Test
-    void getById_shouldReturnUser_whenExistsAndNotDeleted() {
+    void getById_shouldReturnUser_whenExists() {
         User user = createUser(5L);
 
         when(userRepository.findById(5L))
                 .thenReturn(Optional.of(user));
 
-        UserResponse response = service.getById(5L);
+        UserResponse response =
+                service.getById(5L);
 
         assertEquals(5L, response.id());
-        assertEquals("test@test.com", response.email());
-        assertEquals("testuser", response.username());
+        assertEquals(1L, response.authUserId());
     }
 
     @Test
@@ -93,15 +98,20 @@ class UserServiceImplTest {
 
         User deleted = createUser(2L);
         deleted.setDeletedAt(Instant.now());
-        deleted.setActive(false);
 
         when(userRepository.findAll())
-                .thenReturn(List.of(active, deleted));
+                .thenReturn(
+                        List.of(active, deleted)
+                );
 
-        List<UserResponse> result = service.list();
+        List<UserResponse> result =
+                service.list();
 
         assertEquals(1, result.size());
-        assertEquals(1L, result.getFirst().id());
+        assertEquals(
+                1L,
+                result.getFirst().id()
+        );
     }
 
     @Test
@@ -137,7 +147,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateCurrentUser_shouldNormalizeBlankFieldsToNull() {
+    void updateCurrentUser_shouldNormalizeBlankToNull() {
         User user = createUser(3L);
 
         when(currentUserService.getCurrentUser())
@@ -171,11 +181,10 @@ class UserServiceImplTest {
         when(userRepository.save(user))
                 .thenReturn(user);
 
-        UserUpdateRequest request =
-                new UserUpdateRequest(
+        UserProfileUpdateRequest request =
+                new UserProfileUpdateRequest(
                         "  New Name  ",
-                        "  222  ",
-                        false
+                        "  222  "
                 );
 
         UserResponse response =
@@ -191,8 +200,6 @@ class UserServiceImplTest {
                 response.phone()
         );
 
-        assertFalse(response.isActive());
-
         verify(userRepository).save(user);
     }
 
@@ -206,9 +213,8 @@ class UserServiceImplTest {
         when(userRepository.save(user))
                 .thenReturn(user);
 
-        UserUpdateRequest request =
-                new UserUpdateRequest(
-                        null,
+        UserProfileUpdateRequest request =
+                new UserProfileUpdateRequest(
                         null,
                         null
                 );
@@ -226,8 +232,6 @@ class UserServiceImplTest {
                 response.phone()
         );
 
-        assertTrue(response.isActive());
-
         verify(userRepository).save(user);
     }
 
@@ -243,63 +247,26 @@ class UserServiceImplTest {
                 NotFoundException.class,
                 () -> service.update(
                         7L,
-                        new UserUpdateRequest(
+                        new UserProfileUpdateRequest(
                                 "X",
-                                "Y",
-                                true
+                                "Y"
                         )
                 )
         );
 
-        verify(userRepository, never())
-                .save(any());
-    }
-
-    @Test
-    void softDelete_shouldSetDeletedAtAndDeactivate() {
-        User user = createUser(9L);
-
-        when(userRepository.findById(9L))
-                .thenReturn(Optional.of(user));
-
-        when(userRepository.save(user))
-                .thenReturn(user);
-
-        service.softDelete(9L);
-
-        assertNotNull(user.getDeletedAt());
-        assertFalse(user.isActive());
-
-        verify(userRepository).save(user);
-    }
-
-    @Test
-    void softDelete_shouldThrowNotFound_whenAlreadyDeleted() {
-        User user = createUser(9L);
-        user.setDeletedAt(Instant.now());
-
-        when(userRepository.findById(9L))
-                .thenReturn(Optional.of(user));
-
-        assertThrows(
-                NotFoundException.class,
-                () -> service.softDelete(9L)
-        );
-
-        verify(userRepository, never())
-                .save(any());
+        verify(
+                userRepository,
+                never()
+        ).save(any());
     }
 
     private User createUser(Long id) {
         return User.builder()
                 .id(id)
                 .authUserId(1L)
-                .email("test@test.com")
                 .fullName("Test User")
-                .username("testuser")
                 .phone("0888123456")
-                .role(UserRole.CLIENT)
-                .isActive(true)
+                .avatarImageId(null)
                 .createdAt(Instant.now())
                 .deletedAt(null)
                 .build();

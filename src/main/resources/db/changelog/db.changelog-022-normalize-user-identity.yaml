@@ -1,0 +1,108 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-normalize-user-identity
+      author: nikolay
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            stripComments: true
+            sql: |
+              WITH candidates AS (
+                  SELECT
+                      public_user.id AS public_user_id,
+                      auth_user.id AS auth_user_id,
+                      ROW_NUMBER() OVER (
+                          PARTITION BY public_user.id
+                          ORDER BY
+                              CASE
+                                  WHEN LOWER(public_user.email)
+                                       = LOWER(auth_user.email)
+                                  THEN 0
+                                  ELSE 1
+                              END,
+                              auth_user.id
+                      ) AS public_rank,
+                      ROW_NUMBER() OVER (
+                          PARTITION BY auth_user.id
+                          ORDER BY
+                              CASE
+                                  WHEN LOWER(public_user.email)
+                                       = LOWER(auth_user.email)
+                                  THEN 0
+                                  ELSE 1
+                              END,
+                              public_user.id
+                      ) AS auth_rank
+                  FROM public.users public_user
+                  JOIN auth.users auth_user
+                    ON LOWER(public_user.email)
+                       = LOWER(auth_user.email)
+                    OR public_user.username
+                       = auth_user.username
+                  WHERE public_user.auth_user_id IS NULL
+              ),
+              chosen AS (
+                  SELECT
+                      public_user_id,
+                      auth_user_id
+                  FROM candidates
+                  WHERE public_rank = 1
+                    AND auth_rank = 1
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.users existing_user
+                        WHERE existing_user.auth_user_id
+                              = candidates.auth_user_id
+                    )
+              )
+              UPDATE public.users public_user
+              SET auth_user_id = chosen.auth_user_id
+              FROM chosen
+              WHERE public_user.id
+                    = chosen.public_user_id;
+
+              INSERT INTO public.users (
+                  auth_user_id,
+                  email,
+                  full_name,
+                  username,
+                  phone,
+                  is_active,
+                  created_at,
+                  deleted_at
+              )
+              SELECT
+                  auth_user.id,
+                  auth_user.email,
+                  NULL,
+                  auth_user.username,
+                  NULL,
+                  auth_user.is_active,
+                  auth_user.created_at,
+                  NULL
+              FROM auth.users auth_user
+              WHERE NOT EXISTS (
+                  SELECT 1
+                  FROM public.users public_user
+                  WHERE public_user.auth_user_id
+                        = auth_user.id
+              );
+
+              ALTER TABLE public.users
+                DROP CONSTRAINT IF EXISTS uq_users_email;
+
+              ALTER TABLE public.users
+                DROP CONSTRAINT IF EXISTS uq_users_username;
+
+              DROP INDEX IF EXISTS
+                public.idx_users_auth_user_id;
+
+              ALTER TABLE public.users
+                DROP COLUMN IF EXISTS email;
+
+              ALTER TABLE public.users
+                DROP COLUMN IF EXISTS username;
+
+              ALTER TABLE public.users
+                DROP COLUMN IF EXISTS is_active;

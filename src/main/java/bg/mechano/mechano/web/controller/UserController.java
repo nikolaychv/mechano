@@ -6,10 +6,8 @@ import bg.mechano.mechano.service.UserService;
 import bg.mechano.mechano.web.dto.booking.BookingResponse;
 import bg.mechano.mechano.web.dto.user.UserProfileUpdateRequest;
 import bg.mechano.mechano.web.dto.user.UserResponse;
-import bg.mechano.mechano.web.dto.user.UserUpdateRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,22 +22,32 @@ public class UserController {
     private final BookingService bookingService;
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('USER','SHOP_OWNER','ADMIN')")
+    @PreAuthorize(
+            "hasAnyRole('USER','SHOP_OWNER','ADMIN')"
+    )
     public UserResponse getCurrentUser() {
         return userService.getCurrentUser();
     }
 
-    @PutMapping("/me")
-    @PreAuthorize("hasAnyRole('USER','SHOP_OWNER','ADMIN')")
+    @PatchMapping("/me")
+    @PreAuthorize(
+            "hasAnyRole('USER','SHOP_OWNER','ADMIN')"
+    )
     public UserResponse updateCurrentUser(
-            @Valid @RequestBody UserProfileUpdateRequest request
+            @Valid
+            @RequestBody
+            UserProfileUpdateRequest request
     ) {
-        return userService.updateCurrentUser(request);
+        return userService.updateCurrentUser(
+                request
+        );
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse getById(@PathVariable Long id) {
+    public UserResponse getById(
+            @PathVariable Long id
+    ) {
         return userService.getById(id);
     }
 
@@ -53,7 +61,8 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<BookingResponse> getUserBookings(
             @PathVariable Long id,
-            @RequestParam(required = false) BookingStatus status
+            @RequestParam(required = false)
+            BookingStatus status
     ) {
         return bookingService.list(
                 null,
@@ -62,22 +71,17 @@ public class UserController {
         );
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse update(
             @PathVariable Long id,
-            @Valid @RequestBody UserUpdateRequest request
+            @Valid
+            @RequestBody
+            UserProfileUpdateRequest request
     ) {
         return userService.update(
                 id,
                 request
         );
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        userService.softDelete(id);
     }
 }
