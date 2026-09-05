@@ -1,8 +1,10 @@
 package bg.mechano.mechano.web.controller;
 
 import bg.mechano.mechano.domain.entity.ImageAsset;
+import bg.mechano.mechano.domain.enums.ImageOwnerType;
 import bg.mechano.mechano.service.media.ImageAssetService;
 import bg.mechano.mechano.service.media.StorageService;
+import bg.mechano.mechano.service.security.ImageReadAuthorizationService;
 import bg.mechano.mechano.web.dto.media.ImageAssetResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -21,18 +23,28 @@ public class ImageController {
 
     private final ImageAssetService imageService;
     private final StorageService storage;
+    private final ImageReadAuthorizationService
+            imageReadAuthorizationService;
 
     @GetMapping("/{id}")
-    public ImageAssetResponse getMeta(@PathVariable Long id) {
-        ImageAsset asset = imageService.getById(id);
+    public ImageAssetResponse getMeta(
+            @PathVariable Long id
+    ) {
+        ImageAsset asset = getAuthorizedAsset(id);
+
         return toResponse(asset);
     }
 
     @GetMapping("/{id}/content")
-    public ResponseEntity<Resource> getContent(@PathVariable Long id) {
-        ImageAsset asset = imageService.getById(id);
+    public ResponseEntity<Resource> getContent(
+            @PathVariable Long id
+    ) {
+        ImageAsset asset = getAuthorizedAsset(id);
+
         Resource resource =
-                storage.loadAsResource(asset.getStorageKey());
+                storage.loadAsResource(
+                        asset.getStorageKey()
+                );
 
         return ResponseEntity.ok()
                 .contentType(
@@ -40,17 +52,15 @@ public class ImageController {
                                 asset.getContentType()
                         )
                 )
-                .cacheControl(
-                        CacheControl
-                                .maxAge(Duration.ofDays(30))
-                                .cachePublic()
-                )
+                .cacheControl(cacheControl(asset))
                 .body(resource);
     }
 
     @GetMapping("/{id}/thumb")
-    public ResponseEntity<Resource> getThumb(@PathVariable Long id) {
-        ImageAsset asset = imageService.getById(id);
+    public ResponseEntity<Resource> getThumb(
+            @PathVariable Long id
+    ) {
+        ImageAsset asset = getAuthorizedAsset(id);
 
         if (asset.getThumbStorageKey() == null
                 || asset.getThumbStorageKey().isBlank()) {
@@ -71,17 +81,40 @@ public class ImageController {
 
         return ResponseEntity.ok()
                 .contentType(
-                        MediaType.parseMediaType(contentType)
+                        MediaType.parseMediaType(
+                                contentType
+                        )
                 )
-                .cacheControl(
-                        CacheControl
-                                .maxAge(Duration.ofDays(30))
-                                .cachePublic()
-                )
+                .cacheControl(cacheControl(asset))
                 .body(resource);
     }
 
-    private ImageAssetResponse toResponse(ImageAsset asset) {
+    private ImageAsset getAuthorizedAsset(Long id) {
+        ImageAsset asset =
+                imageService.getById(id);
+
+        imageReadAuthorizationService
+                .authorize(asset);
+
+        return asset;
+    }
+
+    private CacheControl cacheControl(
+            ImageAsset asset
+    ) {
+        if (asset.getOwnerType()
+                == ImageOwnerType.BOOKING) {
+            return CacheControl.noStore();
+        }
+
+        return CacheControl
+                .maxAge(Duration.ofDays(30))
+                .cachePrivate();
+    }
+
+    private ImageAssetResponse toResponse(
+            ImageAsset asset
+    ) {
         return new ImageAssetResponse(
                 asset.getId(),
                 asset.getOwnerType(),

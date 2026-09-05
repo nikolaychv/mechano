@@ -1,12 +1,12 @@
 package bg.mechano.mechano.domain.repository;
 
 import bg.mechano.mechano.domain.entity.ImageAsset;
-import bg.mechano.mechano.domain.enums.ImageOwnerType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import java.util.Optional;
 
-public interface ImageAssetRepository extends JpaRepository<ImageAsset, Long> {
+public interface ImageAssetRepository
+        extends JpaRepository<ImageAsset, Long> {
 
-    List<ImageAsset> findAllByOwnerTypeAndOwnerId(ImageOwnerType ownerType, Long ownerId);
+    Optional<ImageAsset> findByIdAndDeletedAtIsNull(Long id);
 }
