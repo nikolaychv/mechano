@@ -6,6 +6,7 @@ import bg.mechano.mechano.service.media.ImageAssetService;
 import bg.mechano.mechano.service.media.StorageService;
 import bg.mechano.mechano.service.security.ImageReadAuthorizationService;
 import bg.mechano.mechano.web.dto.media.ImageAssetResponse;
+import bg.mechano.mechano.web.mapper.ImageAssetResponseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -25,21 +26,26 @@ public class ImageController {
     private final StorageService storage;
     private final ImageReadAuthorizationService
             imageReadAuthorizationService;
+    private final ImageAssetResponseMapper
+            imageAssetResponseMapper;
 
     @GetMapping("/{id}")
     public ImageAssetResponse getMeta(
             @PathVariable Long id
     ) {
-        ImageAsset asset = getAuthorizedAsset(id);
+        ImageAsset asset =
+                getAuthorizedAsset(id);
 
-        return toResponse(asset);
+        return imageAssetResponseMapper
+                .toResponse(asset);
     }
 
     @GetMapping("/{id}/content")
     public ResponseEntity<Resource> getContent(
             @PathVariable Long id
     ) {
-        ImageAsset asset = getAuthorizedAsset(id);
+        ImageAsset asset =
+                getAuthorizedAsset(id);
 
         Resource resource =
                 storage.loadAsResource(
@@ -52,7 +58,9 @@ public class ImageController {
                                 asset.getContentType()
                         )
                 )
-                .cacheControl(cacheControl(asset))
+                .cacheControl(
+                        cacheControl(asset)
+                )
                 .body(resource);
     }
 
@@ -60,10 +68,13 @@ public class ImageController {
     public ResponseEntity<Resource> getThumb(
             @PathVariable Long id
     ) {
-        ImageAsset asset = getAuthorizedAsset(id);
+        ImageAsset asset =
+                getAuthorizedAsset(id);
 
         if (asset.getThumbStorageKey() == null
-                || asset.getThumbStorageKey().isBlank()) {
+                || asset.getThumbStorageKey()
+                .isBlank()) {
+
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .build();
@@ -85,11 +96,15 @@ public class ImageController {
                                 contentType
                         )
                 )
-                .cacheControl(cacheControl(asset))
+                .cacheControl(
+                        cacheControl(asset)
+                )
                 .body(resource);
     }
 
-    private ImageAsset getAuthorizedAsset(Long id) {
+    private ImageAsset getAuthorizedAsset(
+            Long id
+    ) {
         ImageAsset asset =
                 imageService.getById(id);
 
@@ -104,36 +119,12 @@ public class ImageController {
     ) {
         if (asset.getOwnerType()
                 == ImageOwnerType.BOOKING) {
+
             return CacheControl.noStore();
         }
 
         return CacheControl
                 .maxAge(Duration.ofDays(30))
                 .cachePrivate();
-    }
-
-    private ImageAssetResponse toResponse(
-            ImageAsset asset
-    ) {
-        return new ImageAssetResponse(
-                asset.getId(),
-                asset.getOwnerType(),
-                asset.getOwnerId(),
-                asset.getContentType(),
-                asset.getSizeBytes(),
-                asset.getWidth() == null
-                        ? 0
-                        : asset.getWidth(),
-                asset.getHeight() == null
-                        ? 0
-                        : asset.getHeight(),
-                "http://localhost:8080/api/images/"
-                        + asset.getId()
-                        + "/content",
-                "http://localhost:8080/api/images/"
-                        + asset.getId()
-                        + "/thumb",
-                asset.getCreatedAt()
-        );
     }
 }

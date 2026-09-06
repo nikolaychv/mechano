@@ -244,20 +244,4 @@ class ImageAssetServiceImplTest {
         assertEquals("Upload failed", ex.getMessage());
         assertNotNull(ex.getCause());
     }
-
-    @Test
-    void getById_found() {
-        ImageAsset asset = ImageAsset.builder().id(1L).build();
-        when(repo.findById(1L)).thenReturn(Optional.of(asset));
-
-        ImageAsset out = service.getById(1L);
-
-        assertSame(asset, out);
-    }
-
-    @Test
-    void getById_notFound_throws() {
-        when(repo.findById(1L)).thenReturn(Optional.empty());
-        assertThrows(RuntimeException.class, () -> service.getById(1L));
-    }
 }

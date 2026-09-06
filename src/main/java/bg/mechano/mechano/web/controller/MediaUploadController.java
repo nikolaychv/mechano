@@ -1,8 +1,8 @@
 package bg.mechano.mechano.web.controller;
 
-import bg.mechano.mechano.domain.entity.ImageAsset;
 import bg.mechano.mechano.service.media.MediaUploadService;
 import bg.mechano.mechano.web.dto.media.ImageAssetResponse;
+import bg.mechano.mechano.web.mapper.ImageAssetResponseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class MediaUploadController {
 
     private final MediaUploadService mediaUploadService;
+    private final ImageAssetResponseMapper
+            imageAssetResponseMapper;
 
     @PostMapping(
             value = "/users/{id}/avatar",
@@ -27,7 +29,7 @@ public class MediaUploadController {
             @PathVariable Long id,
             @RequestPart("file") MultipartFile file
     ) {
-        return toResponse(
+        return imageAssetResponseMapper.toResponse(
                 mediaUploadService.uploadAvatar(
                         id,
                         file
@@ -46,7 +48,7 @@ public class MediaUploadController {
             @PathVariable Long id,
             @RequestPart("file") MultipartFile file
     ) {
-        return toResponse(
+        return imageAssetResponseMapper.toResponse(
                 mediaUploadService
                         .uploadRepairShopCover(
                                 id,
@@ -66,7 +68,7 @@ public class MediaUploadController {
             @PathVariable Long id,
             @RequestPart("file") MultipartFile file
     ) {
-        return toResponse(
+        return imageAssetResponseMapper.toResponse(
                 mediaUploadService.uploadReviewImage(
                         id,
                         file
@@ -85,36 +87,11 @@ public class MediaUploadController {
             @PathVariable Long id,
             @RequestPart("file") MultipartFile file
     ) {
-        return toResponse(
+        return imageAssetResponseMapper.toResponse(
                 mediaUploadService.uploadBookingImage(
                         id,
                         file
                 )
-        );
-    }
-
-    private ImageAssetResponse toResponse(
-            ImageAsset asset
-    ) {
-        return new ImageAssetResponse(
-                asset.getId(),
-                asset.getOwnerType(),
-                asset.getOwnerId(),
-                asset.getContentType(),
-                asset.getSizeBytes(),
-                asset.getWidth() == null
-                        ? 0
-                        : asset.getWidth(),
-                asset.getHeight() == null
-                        ? 0
-                        : asset.getHeight(),
-                "http://localhost:8080/api/images/"
-                        + asset.getId()
-                        + "/content",
-                "http://localhost:8080/api/images/"
-                        + asset.getId()
-                        + "/thumb",
-                asset.getCreatedAt()
         );
     }
 }
