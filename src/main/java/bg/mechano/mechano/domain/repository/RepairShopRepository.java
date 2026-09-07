@@ -7,13 +7,13 @@ import java.util.List;
 
 public interface RepairShopRepository extends JpaRepository<RepairShop, Long> {
 
-    List<RepairShop> findByCityIgnoreCaseAndDeletedAtIsNull(
-            String city
-    );
+    List<RepairShop> findByCityIgnoreCaseAndDeletedAtIsNull(String city);
 
     List<RepairShop> findByIsActiveTrueAndDeletedAtIsNull();
 
-    List<RepairShop> findByOwnerIdAndDeletedAtIsNull(
-            Long ownerId
-    );
+    List<RepairShop> findByCityIgnoreCaseAndIsActiveTrueAndDeletedAtIsNull(String city);
+
+    List<RepairShop> findByDeletedAtIsNull();
+
+    List<RepairShop> findByOwnerIdAndDeletedAtIsNull(Long ownerId);
 }

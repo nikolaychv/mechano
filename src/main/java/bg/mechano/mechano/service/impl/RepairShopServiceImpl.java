@@ -26,9 +26,7 @@ public class RepairShopServiceImpl implements RepairShopService {
     private final CurrentUserService currentUserService;
 
     @Override
-    public RepairShopResponse create(
-            RepairShopCreateRequest request
-    ) {
+    public RepairShopResponse create(RepairShopCreateRequest request) {
         User owner = currentUserService.getCurrentUser();
 
         RepairShop shop = RepairShop.builder()
@@ -47,49 +45,32 @@ public class RepairShopServiceImpl implements RepairShopService {
                 .deletedAt(null)
                 .build();
 
-        return toResponse(
-                repairShopRepository.save(shop)
-        );
+        return toResponse(repairShopRepository.save(shop));
     }
 
     @Override
     @Transactional(readOnly = true)
     public RepairShopResponse getById(Long id) {
-        return toResponse(
-                getExisting(id)
-        );
+        return toResponse(getExisting(id));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RepairShopResponse> list(
-            String city,
-            Boolean onlyActive
-    ) {
+    public List<RepairShopResponse> list(String city, Boolean onlyActive) {
+        boolean activeOnly = Boolean.TRUE.equals(onlyActive);
         List<RepairShop> shops;
 
-        if (onlyActive != null && onlyActive) {
-            shops =
-                    repairShopRepository
-                            .findByIsActiveTrueAndDeletedAtIsNull();
+        if (city != null && activeOnly) {
+            shops = repairShopRepository.findByCityIgnoreCaseAndIsActiveTrueAndDeletedAtIsNull(city);
         } else if (city != null) {
-            shops =
-                    repairShopRepository
-                            .findByCityIgnoreCaseAndDeletedAtIsNull(
-                                    city
-                            );
+            shops = repairShopRepository.findByCityIgnoreCaseAndDeletedAtIsNull(city);
+        } else if (activeOnly) {
+            shops = repairShopRepository.findByIsActiveTrueAndDeletedAtIsNull();
         } else {
-            shops = repairShopRepository
-                    .findAll()
-                    .stream()
-                    .filter(shop ->
-                            shop.getDeletedAt() == null
-                    )
-                    .toList();
+            shops = repairShopRepository.findByDeletedAtIsNull();
         }
 
-        return shops
-                .stream()
+        return shops.stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -97,25 +78,17 @@ public class RepairShopServiceImpl implements RepairShopService {
     @Override
     @Transactional(readOnly = true)
     public List<RepairShopResponse> listCurrentOwnerRepairShops() {
-        Long currentUserId =
-                currentUserService.getCurrentUserId();
+        Long currentUserId = currentUserService.getCurrentUserId();
 
-        return repairShopRepository
-                .findByOwnerIdAndDeletedAtIsNull(
-                        currentUserId
-                )
+        return repairShopRepository.findByOwnerIdAndDeletedAtIsNull(currentUserId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public RepairShopResponse update(
-            Long id,
-            RepairShopUpdateRequest request
-    ) {
+    public RepairShopResponse update(Long id, RepairShopUpdateRequest request) {
         RepairShop shop = getExisting(id);
-
         authorizeManagement(shop);
 
         if (request.name() != null) {
@@ -143,38 +116,27 @@ public class RepairShopServiceImpl implements RepairShopService {
         }
 
         if (request.description() != null) {
-            shop.setDescription(
-                    trim(request.description())
-            );
+            shop.setDescription(trim(request.description()));
         }
 
         if (request.priceRangeMin() != null) {
-            shop.setPriceRangeMin(
-                    request.priceRangeMin()
-            );
+            shop.setPriceRangeMin(request.priceRangeMin());
         }
 
         if (request.priceRangeMax() != null) {
-            shop.setPriceRangeMax(
-                    request.priceRangeMax()
-            );
+            shop.setPriceRangeMax(request.priceRangeMax());
         }
 
         if (request.isActive() != null) {
-            shop.setActive(
-                    request.isActive()
-            );
+            shop.setActive(request.isActive());
         }
 
-        return toResponse(
-                repairShopRepository.save(shop)
-        );
+        return toResponse(repairShopRepository.save(shop));
     }
 
     @Override
     public void softDelete(Long id) {
         RepairShop shop = getExisting(id);
-
         authorizeManagement(shop);
 
         shop.setDeletedAt(Instant.now());
@@ -183,52 +145,32 @@ public class RepairShopServiceImpl implements RepairShopService {
         repairShopRepository.save(shop);
     }
 
-    private void authorizeManagement(
-            RepairShop shop
-    ) {
+    private void authorizeManagement(RepairShop shop) {
         if (currentUserService.isAdmin()) {
             return;
         }
 
-        User currentUser =
-                currentUserService.getCurrentUser();
+        User currentUser = currentUserService.getCurrentUser();
 
-        if (currentUserService.isShopOwner()
-                && shop
-                .getOwner()
-                .getId()
-                .equals(currentUser.getId())) {
+        if (currentUserService.isShopOwner() && shop.getOwner().getId().equals(currentUser.getId())) {
             return;
         }
 
-        throw new AccessDeniedException(
-                "You cannot manage this repair shop."
-        );
+        throw new AccessDeniedException("You cannot manage this repair shop.");
     }
 
     private RepairShop getExisting(Long id) {
-        RepairShop shop =
-                repairShopRepository
-                        .findById(id)
-                        .orElseThrow(() ->
-                                new NotFoundException(
-                                        "RepairShop not found: "
-                                                + id
-                                )
-                        );
+        RepairShop shop = repairShopRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("RepairShop not found: " + id));
 
         if (shop.getDeletedAt() != null) {
-            throw new NotFoundException(
-                    "RepairShop not found: " + id
-            );
+            throw new NotFoundException("RepairShop not found: " + id);
         }
 
         return shop;
     }
 
-    private RepairShopResponse toResponse(
-            RepairShop shop
-    ) {
+    private RepairShopResponse toResponse(RepairShop shop) {
         return new RepairShopResponse(
                 shop.getId(),
                 shop.getOwner().getId(),
@@ -247,8 +189,6 @@ public class RepairShopServiceImpl implements RepairShopService {
     }
 
     private String trim(String value) {
-        return value == null
-                ? null
-                : value.trim();
+        return value == null ? null : value.trim();
     }
 }

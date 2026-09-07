@@ -30,83 +30,51 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public ReviewResponse create(ReviewCreateRequest request) {
-        User currentUser =
-                currentUserService.getCurrentUser();
+        User currentUser = currentUserService.getCurrentUser();
 
-        RepairShop repairShop = repairShopRepository
-                .findById(request.repairShopId())
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "RepairShop not found: "
-                                        + request.repairShopId()
-                        )
-                );
+        RepairShop repairShop = repairShopRepository.findById(request.repairShopId())
+                .orElseThrow(() -> new NotFoundException(
+                        "RepairShop not found: " + request.repairShopId()));
 
         Review review = Review.builder()
                 .repairShop(repairShop)
                 .user(currentUser)
                 .parentReview(null)
                 .ratingOverall(request.ratingOverall())
-                .commentText(
-                        normalizeNullable(
-                                request.commentText()
-                        )
-                )
+                .commentText(normalizeNullable(request.commentText()))
                 .createdAt(Instant.now())
                 .deletedAt(null)
                 .build();
 
-        return toResponse(
-                reviewRepository.save(review)
-        );
+        return toResponse(reviewRepository.save(review));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ReviewResponse getById(Long id) {
-        Review review = reviewRepository
-                .findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Review not found: " + id
-                        )
-                );
+        Review review = reviewRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException("Review not found: " + id));
 
         return toResponse(review);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReviewResponse> list(
-            Long repairShopId,
-            Long userId
-    ) {
+    public List<ReviewResponse> list(Long repairShopId, Long userId) {
         List<Review> reviews;
 
-        if (repairShopId != null) {
-            reviews =
-                    reviewRepository
-                            .findByRepairShopIdAndDeletedAtIsNull(
-                                    repairShopId
-                            );
+        if (repairShopId != null && userId != null) {
+            reviews = reviewRepository.findByRepairShopIdAndUserIdAndDeletedAtIsNull(
+                    repairShopId, userId);
+        } else if (repairShopId != null) {
+            reviews = reviewRepository.findByRepairShopIdAndDeletedAtIsNull(repairShopId);
         } else if (userId != null) {
-            reviews =
-                    reviewRepository
-                            .findByUserIdAndDeletedAtIsNull(
-                                    userId
-                            );
+            reviews = reviewRepository.findByUserIdAndDeletedAtIsNull(userId);
         } else {
-            reviews = reviewRepository
-                    .findAll()
-                    .stream()
-                    .filter(review ->
-                            review.getDeletedAt() == null
-                    )
-                    .toList();
+            reviews = reviewRepository.findByDeletedAtIsNull();
         }
 
-        return reviews
-                .stream()
+        return reviews.stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -114,13 +82,9 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(readOnly = true)
     public List<ReviewResponse> listCurrentUserReviews() {
-        Long currentUserId =
-                currentUserService.getCurrentUserId();
+        Long currentUserId = currentUserService.getCurrentUserId();
 
-        return reviewRepository
-                .findByUserIdAndDeletedAtIsNull(
-                        currentUserId
-                )
+        return reviewRepository.findByUserIdAndDeletedAtIsNull(currentUserId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -128,53 +92,37 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReviewThreadResponse> listThreaded(
-            Long repairShopId
-    ) {
-        List<Review> roots = reviewRepository
-                .findByRepairShopIdAndParentReviewIsNullAndDeletedAtIsNull(
-                        repairShopId
-                );
+    public List<ReviewThreadResponse> listThreaded(Long repairShopId) {
+        List<Review> roots =
+                reviewRepository.findByRepairShopIdAndParentReviewIsNullAndDeletedAtIsNull(
+                        repairShopId);
 
-        return roots
-                .stream()
+        return roots.stream()
                 .map(this::toThreadResponse)
                 .toList();
     }
 
     @Override
     public void delete(Long id) {
-        Review review = reviewRepository
-                .findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Review not found: " + id
-                        )
-                );
+        Review review = reviewRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new NotFoundException("Review not found: " + id));
 
         authorizeDelete(review);
 
         review.setDeletedAt(Instant.now());
-
         reviewRepository.save(review);
     }
 
     @Override
     public void restore(Long id) {
-        Review review = reviewRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Review not found: " + id
-                        )
-                );
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Review not found: " + id));
 
         if (review.getDeletedAt() == null) {
             return;
         }
 
         review.setDeletedAt(null);
-
         reviewRepository.save(review);
     }
 
@@ -183,20 +131,13 @@ public class ReviewServiceImpl implements ReviewService {
             return;
         }
 
-        User currentUser =
-                currentUserService.getCurrentUser();
+        User currentUser = currentUserService.getCurrentUser();
 
-        if (currentUserService.isUser()
-                && review
-                .getUser()
-                .getId()
-                .equals(currentUser.getId())) {
+        if (currentUserService.isUser() && review.getUser().getId().equals(currentUser.getId())) {
             return;
         }
 
-        throw new AccessDeniedException(
-                "You cannot delete this review."
-        );
+        throw new AccessDeniedException("You cannot delete this review.");
     }
 
     private ReviewResponse toResponse(Review review) {
@@ -204,23 +145,16 @@ public class ReviewServiceImpl implements ReviewService {
                 review.getId(),
                 review.getRepairShop().getId(),
                 review.getUser().getId(),
-                review.getParentReview() != null
-                        ? review.getParentReview().getId()
-                        : null,
+                review.getParentReview() != null ? review.getParentReview().getId() : null,
                 review.getRatingOverall(),
                 review.getCommentText(),
                 review.getCreatedAt()
         );
     }
 
-    private ReviewThreadResponse toThreadResponse(
-            Review review
-    ) {
+    private ReviewThreadResponse toThreadResponse(Review review) {
         List<ReviewThreadResponse> replies =
-                reviewRepository
-                        .findByParentReviewIdAndDeletedAtIsNull(
-                                review.getId()
-                        )
+                reviewRepository.findByParentReviewIdAndDeletedAtIsNull(review.getId())
                         .stream()
                         .map(this::toThreadResponse)
                         .toList();
@@ -242,9 +176,6 @@ public class ReviewServiceImpl implements ReviewService {
         }
 
         String trimmed = value.trim();
-
-        return trimmed.isBlank()
-                ? null
-                : trimmed;
+        return trimmed.isBlank() ? null : trimmed;
     }
 }
