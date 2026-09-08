@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-drop-legacy-repair-shop-media
+      author: nikolay
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              DROP INDEX IF EXISTS public.idx_repair_shops_media_storage_key;
+
+              ALTER TABLE public.repair_shops
+                DROP COLUMN IF EXISTS media_storage_key,
+                DROP COLUMN IF EXISTS cover_image_path;

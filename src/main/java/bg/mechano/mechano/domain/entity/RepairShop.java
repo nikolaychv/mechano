@@ -6,11 +6,6 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Represents a repairShop entity in the system.
- * This entity maps to the "repair_shops" table in the database.
- * It stores information about various services offered by users, including details such as name, location, pricing, and availability.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -63,13 +58,6 @@ public class RepairShop {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
-    // legacy field
-    @Column(name = "media_storage_key", length = 255)
-    private String mediaStorageKey;
-
-    @Column(name = "cover_image_path", length = 500)
-    private String coverImagePath;
 
     @Column(name = "deleted_at")
     private Instant deletedAt;

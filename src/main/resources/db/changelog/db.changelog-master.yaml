@@ -13,3 +13,6 @@ databaseChangeLog:
 
   - include:
       file: db/changelog/db.changelog-022-normalize-user-identity.yaml
+
+  - include:
+      file: db/changelog/db.changelog-023-drop-legacy-repair-shop-media.yaml
