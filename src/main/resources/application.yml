@@ -12,6 +12,7 @@ spring:
       schema: public
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: none
     show-sql: false
